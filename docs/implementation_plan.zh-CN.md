@@ -1,227 +1,470 @@
-# 多智能体叙事模拟系统：原型实现方案计划书
+# Astral Narrative Agents：技术路线与实现路径
 
-> 项目代号：Palace Narrative Agents  
-> 目标仓库：`JaspinXu/palace-narrative-agents`  
-> 初始场景：架空王朝的历史幻想宫廷  
-> 建议周期：10 周（可压缩为 6–8 周 MVP）
+> 项目性质：非官方、非商业的研究与同人原型  
+> 研究主题：基于《崩坏：星穹铁道》公开角色设定的多智能体叙事模拟  
+> 推荐周期：10 周  
+> MVP 规模：4–6 个角色、20–30 轮模拟、4–6 个叙事章节
 
 ## 1. 项目目标
 
-本项目拟实现一个由大语言模型驱动的多智能体叙事模拟原型。多个角色智能体拥有彼此隔离的记忆、目标、性格、信念与私密信息，在共享世界中按轮次观察、决策和互动；系统负责裁决行动、更新世界状态、检查信息边界与连续性，并将结构化模拟结果转化为连贯的短篇叙事章节。
+本项目拟实现一个由大语言模型驱动的多智能体叙事模拟系统。多个角色智能体在共享场景中持续观察、决策、沟通和行动，每个角色具有独立的：
 
-首个可交付版本应支持：
+- 公开设定与行为边界；
+- 长期目标、短期目标和目标优先级；
+- 私人记忆、关系记忆和当前信念；
+- 仅对本人可见的秘密与误解；
+- 对其他角色的信任、警惕、依赖和情感状态；
+- 信息可见范围与知识来源。
 
-- 4–6 个角色连续运行至少 20 轮；
-- 每个角色具有独立的长期记忆、短期上下文、目标和信念状态；
-- 世界状态能够追踪人物关系、阵营、资源、地点、事件和叙事约束；
-- 角色只能基于其可见信息决策，系统能检测明显的信息泄漏；
-- 每 3–5 轮生成一个可阅读的叙事片段，并保留可追溯的模拟日志；
-- 使用固定测试场景对角色一致性、记忆、泄漏和叙事连贯性进行评测。
+系统需要维护场景的唯一真实状态，裁决多个角色的冲突行动，更新事件、资源、关系和记忆，并把已经确认的结构化事件生成连贯的原创叙事章节。
 
-非目标：第一阶段不追求开放世界、实时多人游戏、完全自主的长篇小说生成，也不把向量数据库或复杂前端作为 MVP 的必要条件。
+MVP 的重点不是最大化角色数量或文本长度，而是验证四个研究问题：
 
-## 2. 研究问题
+1. 角色是否能够在多轮互动中保持行为一致性；
+2. 私有记忆和可见性控制是否能够防止信息泄漏；
+3. 长期记忆是否能够正确影响后续行动；
+4. 事件驱动的叙事生成是否能够维持世界状态与剧情连续性。
 
-1. 私有记忆与角色信念隔离能否降低多智能体叙事中的信息泄漏？
-2. 结构化的“决策—裁决—状态更新—叙事化”流程是否比自由对话更能维持长期连续性？
-3. 哪种记忆策略能在成本、角色一致性和长期召回之间取得较好平衡？
-4. 规则检查、LLM 检查和人工检查在叙事一致性评测中各自适合解决哪些问题？
-5. 不同智能体编排框架对可控性、调试难度、延迟和复现实验有何影响？
+## 2. 范围与边界
 
-## 3. MVP 场景设计
+### 2.1 MVP 范围
 
-建议使用一个完全架空的“承曜朝”宫廷，避免把模型输出误认为真实历史。首轮设置 5 个角色：
+- 选择 4–6 名已有合理关系基础或可被同一任务召集的角色；
+- 设计一个不修改原作主线、可在 20–30 轮内结束的原创封闭事件；
+- 每轮允许角色进行观察、对话、调查、资源操作或移动；
+- 每 3–5 轮生成一个叙事章节；
+- 支持暂停、恢复、回放和导出；
+- 对角色一致性、泄漏、记忆、连续性、成本与延迟进行评测。
 
-| 角色 | 公开身份 | 核心目标 | 私密信息示例 |
-|---|---|---|---|
-| 皇帝 | 王朝统治者 | 维持权力与财政稳定 | 已知边军账目存在缺口 |
-| 皇后 | 后宫与外戚代表 | 保护太子并压制政敌 | 掌握一封未公开密信 |
-| 首辅 | 文官集团领袖 | 推动整顿并扩大文官权力 | 暗中保护涉案门生 |
-| 大将军 | 军方领袖 | 确保军饷与边防自主权 | 对某次战报真实性存疑 |
-| 御史 | 调查者 | 查清粮饷案并积累政治声望 | 拥有不完整的证词 |
+### 2.2 暂不实现
 
-开局事件可设为“边军粮饷失踪，朝会上出现相互矛盾的奏报”。该事件天然支持联盟、欺骗、调查、资源竞争和关系变化。
+- 覆盖全部角色、星球、阵营与主线剧情；
+- 直接复现游戏战斗系统；
+- 自动抓取或训练完整游戏脚本；
+- 实时多人在线交互；
+- 由 LLM 任意修改官方设定；
+- 商业化发布或使用官方模型、语音、CG 等资产。
+
+### 2.3 建议测试场景
+
+初始场景应具备信息不对称、角色目标冲突和明确终止条件。建议使用“封闭空间中的异常调查”：
+
+- 4–6 个角色因共同任务进入一艘暂时失联的运输舰；
+- 舰内存在资源不足、通信受限、身份可疑者和互相矛盾的记录；
+- 每个角色掌握不同线索或私人任务；
+- 角色需要在合作、隐瞒、试探和资源分配之间做出选择；
+- 场景在危机解除、任务失败或达到最大轮数时终止。
+
+角色与地点应通过配置文件替换，不写死在核心代码中。
+
+## 3. 核心设计原则
+
+### 3.1 三层信息模型
+
+系统必须严格分离：
+
+1. **官方设定层 Canon Layer**  
+   已公开、可追溯且在本次实验中不可由模型修改的角色与世界观事实。
+
+2. **场景真值层 Scenario Truth Layer**  
+   本次原创场景中真实发生的事件、资源、地点、关系和约束，是叙事生成的唯一事实源。
+
+3. **角色信念层 Character Belief Layer**  
+   每个角色认为真实的内容。信念可能错误、不完整或来自谣言，但必须记录来源和置信度。
+
+角色智能体不能直接读取完整的 Canon Layer 或 Scenario Truth Layer，只能读取系统为其构建的权限过滤观察。
+
+### 3.2 事件溯源
+
+所有真实发生的变化必须来自规范化事件。世界状态是事件日志的当前投影，叙事文本只是事件日志的文学化视图。
+
+模型生成的叙事不得反向写入世界状态。若叙事生成了事件日志中不存在的事实，只能标记为连续性错误，不能自动接受为新事实。
+
+### 3.3 规则优先、模型补充
+
+- 资源加减、地点移动、权限检查等确定性逻辑由代码执行；
+- 角色决策、谈判意图、含义理解等开放语义问题交给 LLM；
+- 冲突裁决先应用硬规则，再由 LLM 处理社会性或语义性结果；
+- 所有 LLM 输出必须经过结构化 schema 校验。
+
+### 3.4 可复现与可审计
+
+每次运行需要保存：
+
+- 模型名称、参数和供应商；
+- prompt 模板版本；
+- 场景和角色配置版本；
+- 随机种子；
+- 每一步输入、结构化输出和错误；
+- 记忆检索结果及其来源；
+- 世界状态 before/after diff；
+- token、费用、延迟和重试次数。
 
 ## 4. 总体架构
 
 ```mermaid
 flowchart TD
-    A["Scenario Loader<br/>场景、角色、规则"] --> B["Simulation Orchestrator<br/>轮次与阶段编排"]
-    B --> C["Observation Builder<br/>按权限生成角色观察"]
-    C --> D["Character Agents<br/>私有记忆、目标、信念"]
-    D --> E["Action Normalizer<br/>结构化行动"]
-    E --> F["World Adjudicator<br/>规则与冲突裁决"]
-    F --> G["State Reducer<br/>原子状态更新"]
-    G --> H["Memory Manager<br/>写入、摘要、检索"]
-    H --> I["Continuity & Leakage Checker"]
-    I --> B
-    G --> J["Episode Writer<br/>叙事生成"]
-    J --> K["Evaluator & Trace Store"]
+    A["Scenario & Canon Loader"] --> B["Simulation Orchestrator"]
+    B --> C["Scene Director"]
+    C --> D["Observation Builder"]
+    D --> E["Memory Retriever"]
+    E --> F["Character Agents"]
+    F --> G["Action Normalizer"]
+    G --> H["World Adjudicator"]
+    H --> I["Deterministic State Reducer"]
+    I --> J["Event Store"]
+    J --> K["Memory & Belief Updater"]
+    K --> L["Continuity / Leakage Checker"]
+    L --> B
+    J --> M["Episode Planner"]
+    M --> N["Narrative Writer"]
+    N --> O["Narrative Validator"]
+    O --> P["Trace & Evaluation Store"]
 ```
 
-核心设计原则：
+### 4.1 组件职责
 
-- **模拟真值与叙事文本分离**：结构化事件日志是唯一事实来源，叙事文本不能反向修改世界状态。
-- **角色上下文隔离**：每个角色只接收公开状态、亲历事件、被告知内容和其自身记忆。
-- **状态更新确定化**：LLM 提议更新，代码使用 schema 验证后以 reducer 方式应用。
-- **全链路可追溯**：保存提示词版本、模型参数、输入摘要、结构化输出、状态 diff、token 与延迟。
-- **先做简单编排**：MVP 优先使用清晰的 Python 状态机；当分支、重试和人工介入增多时再引入 LangGraph。
+| 组件 | 输入 | 输出 | 是否调用 LLM |
+|---|---|---|---|
+| Scenario Loader | YAML/JSON 配置 | 初始世界与角色 | 否 |
+| Scene Director | 当前冲突与节奏 | 本轮参与者和焦点 | 可选 |
+| Observation Builder | 真值、事件权限 | 单角色观察包 | 否 |
+| Memory Retriever | 目标、观察、记忆库 | 相关记忆 ID | 可选 |
+| Character Agent | 角色上下文 | ActionIntent | 是 |
+| Action Normalizer | 行动意图 | 标准行动类型 | 小模型或规则 |
+| World Adjudicator | 多个行动与规则 | CanonicalEvent 候选 | 混合 |
+| State Reducer | 已验证事件 | 新状态和 diff | 否 |
+| Memory Updater | 事件与角色视角 | 记忆、信念变化 | 混合 |
+| Continuity Checker | 状态、事件、知识集合 | 错误与严重度 | 规则优先 |
+| Narrative Writer | 已确认事件 | 叙事章节 | 是 |
+| Evaluator | trace 与基准集 | 指标和失败样本 | 混合 |
 
-## 5. 技术选型
+## 5. 推荐技术栈
 
-### 5.1 推荐栈
+### 5.1 核心
 
 - Python 3.11+
-- Pydantic v2：数据模型与结构化输出校验
-- OpenAI Python SDK：LLM 调用、结构化输出与 tracing 基础
-- LangGraph：第二阶段用于显式状态图、条件边、重试和中断恢复
-- SQLite + SQLAlchemy/SQLModel：实验、轮次、事件、记忆和指标持久化
-- pytest：单元、属性与回归测试
-- Typer：命令行入口
-- Streamlit：可选的研究演示界面
-- Ruff + mypy：代码质量
+- Pydantic v2：数据模型、JSON Schema、结构化输出校验
+- LangGraph：轮次状态图、条件边、checkpoint、失败恢复
+- OpenAI Python SDK 或兼容模型客户端：角色决策与叙事生成
+- Typer：CLI
+- pytest、Hypothesis：单元测试、性质测试和回归测试
+- Ruff、mypy：代码质量
 
-### 5.2 框架比较策略
+### 5.2 数据与记忆
 
-第一阶段不同时实现多个框架。先用原生 Python 建立可控基线，再选 LangGraph 重构一条完整链路。CrewAI 和 AutoGen 只在有明确研究问题时做最小对照实验，比较：
+- SQLite + SQLAlchemy/SQLModel：MVP 持久化
+- SQLite FTS5：关键词和全文记忆检索
+- PostgreSQL + pgvector：第二阶段语义检索和并发扩展
+- Alembic：数据库迁移
 
-- 状态可见性和隔离能力；
-- 失败重试与恢复；
-- 运行 trace 的可解释性；
-- 每轮延迟与 token 成本；
-- 自定义裁决和评测的接入难度。
+向量数据库不是 MVP 前置条件。第一阶段应优先证明事件来源、信息权限、记忆写入和检索策略正确。
 
-## 6. 核心数据模型
+### 5.3 API 与界面
+
+- FastAPI：模拟控制和查询 API
+- Streamlit：第一版研究演示
+- React/Next.js：需要复杂时间线、关系图和多面板调试时再引入
+- NetworkX 或 Cytoscape.js：关系与因果图
+
+### 5.4 可观测性与评测
+
+- Arize Phoenix：OpenTelemetry trace、数据集、实验和评测
+- LangSmith：如果 LangGraph 集成更方便，可作为替代
+- pytest snapshot / golden cases：结构化状态回归
+- pandas、Jupyter：实验分析
+
+### 5.5 框架对照
+
+主路线采用“原生 Python reducer + LangGraph 编排”。对照实验最多选择一个：
+
+- OpenAI Agents SDK：比较 handoff、session、guardrail 与 tracing；
+- AutoGen AgentChat：比较 group chat、GraphFlow 和 team orchestration；
+- CrewAI：比较 crew 自治与 flow 编排。
+
+框架只负责调用和编排。官方设定、场景真值、角色信念、权限和事件日志必须由项目代码显式控制。
+
+## 6. 数据模型
+
+### 6.1 官方设定
+
+```python
+class CanonFact(BaseModel):
+    id: str
+    subject_id: str
+    predicate: str
+    value: str
+    source_url: str
+    source_version: str
+    confidence: Literal["official", "verified_summary"]
+    immutable: bool = True
+```
+
+只收录实验真正需要的最小事实集，不构建完整百科。
+
+### 6.2 角色
 
 ```python
 class CharacterProfile(BaseModel):
     id: str
-    public_bio: str
-    personality: dict[str, float]
+    display_name: str
+    public_summary: str
+    values: list[str]
+    behavioral_rules: list[str]
+    hard_constraints: list[str]
     strategic_preferences: list[str]
-    secrets: list[str]
-    initial_goals: list["Goal"]
+    speech_style: dict[str, str | float]
+    private_facts: list[str]
+    goals: list["Goal"]
+```
 
+`speech_style` 只保存正式程度、句长、直接程度、幽默倾向等抽象特征，不保存大量原作台词。
+
+### 6.3 信念与记忆
+
+```python
 class Belief(BaseModel):
+    id: str
+    owner_id: str
     proposition: str
     confidence: float
+    stance: Literal["believes", "doubts", "disbelieves"]
     source_event_ids: list[str]
     last_updated_round: int
 
 class Memory(BaseModel):
+    id: str
     owner_id: str
     kind: Literal["episodic", "semantic", "relationship", "goal"]
     content: str
     source_event_ids: list[str]
     salience: float
+    emotional_valence: float
     visibility: Literal["private", "shared", "public"]
+    created_round: int
+```
 
-class WorldState(BaseModel):
-    round_no: int
-    locations: dict
-    resources: dict
-    relationships: dict[str, dict[str, float]]
-    public_facts: list[str]
-    active_constraints: list[str]
+### 6.4 行动和事件
 
+```python
 class ActionIntent(BaseModel):
     actor_id: str
-    action_type: str
+    action_type: Literal[
+        "speak", "ask", "reveal", "conceal", "investigate",
+        "move", "use_resource", "negotiate", "assist", "oppose", "wait"
+    ]
     target_ids: list[str]
     public_content: str | None
     private_content: str | None
     intended_effects: list[str]
     evidence_event_ids: list[str]
+    confidence: float
 
 class CanonicalEvent(BaseModel):
     id: str
     round_no: int
+    event_type: str
     participants: list[str]
     observers: list[str]
     public_summary: str | None
     private_payloads: dict[str, str]
-    state_patch: list[dict]
+    state_patch: list["PatchOperation"]
+    caused_by_action_ids: list[str]
 ```
 
-关系建议用有方向的连续变量表示，例如 `trust`、`fear`、`influence`、`obligation`，范围统一为 `[-1, 1]`；每次变化必须记录原因事件和变化量。
+### 6.5 世界状态
 
-## 7. 单轮模拟流程
+```python
+class WorldState(BaseModel):
+    run_id: str
+    round_no: int
+    phase: str
+    locations: dict[str, str]
+    resources: dict[str, float]
+    relationships: dict[str, dict[str, "RelationshipState"]]
+    active_conflicts: list[str]
+    open_threads: list[str]
+    public_fact_ids: list[str]
+    constraints: list[str]
+```
 
-1. **轮次规划**：编排器根据当前冲突和场景节奏选择本轮地点、参与者与可用行动窗口。
-2. **生成观察**：为每个角色构建权限过滤后的观察包，禁止传入全局私密状态。
-3. **检索记忆**：按相关性、显著性、时间衰减和未解决目标选取有限条记忆。
-4. **角色决策**：角色输出结构化 `ActionIntent`，并引用其决策依据对应的事件 ID。
-5. **行动规范化**：将自由表达映射到有限的行动类型，例如谈判、调查、公开发言、秘密传递、资源调动。
-6. **冲突裁决**：规则优先，LLM 仅处理语义或社会冲突；输出候选结果和置信度。
-7. **应用状态更新**：校验 patch、检查不变量、原子提交，并生成 before/after diff。
-8. **写入记忆与信念**：只向事件参与者、观察者或被告知者写入相应记忆。
-9. **连续性检查**：检查角色越权知识、时间地点冲突、资源下溢、死亡角色行动等。
-10. **叙事化**：按事件日志生成场景文本，禁止引入未在事件或允许推断集中出现的新事实。
+关系是有方向的。例如 A 信任 B 不代表 B 信任 A。建议至少追踪 `trust`、`suspicion`、`affinity`、`obligation` 和 `influence`，统一限制在 `[-1, 1]`。
 
-## 8. 提示词与输出契约
+## 7. 单轮执行流程
 
-每类模型调用独立维护模板和版本号：
+### 阶段 1：选择场景焦点
 
-- `character_decision_v1`：角色身份、目标、当前信念、可见观察、检索记忆、可选行动；
-- `adjudication_v1`：冲突行动、硬规则、相关世界状态、随机种子结果；
-- `memory_update_v1`：事件事实、角色视角、情绪影响、应写入的记忆类型；
-- `continuity_check_v1`：事件日志、状态 diff、不变量、已知信息集合；
-- `episode_writer_v1`：已确认事件、叙事视角、风格约束、不可新增事实列表。
+Scene Director 基于未解决冲突、角色目标和叙事节奏选择本轮参与者、地点、优先事件与可用行动窗口。
 
-所有决策类调用必须输出 JSON/Pydantic schema。对解析失败、缺字段或引用不存在事件 ID 的结果进行最多两次修复；仍失败则使用保守的 no-op 行动并记录错误。
+MVP 可先采用确定性轮转，避免导演模型同时承担过多控制权。
 
-角色提示中应明确要求“基于角色相信的事实行动”，而非基于系统真值行动。这样可以保留误解、谣言和欺骗带来的叙事空间。
+### 阶段 2：构建角色观察
 
-## 9. 记忆与信息边界
+`ObservationBuilder(character_id)` 只输出：
 
-### 9.1 三层记忆
+- 当前可见地点与在场角色；
+- 公开事件；
+- 角色亲历事件；
+- 明确发送给该角色的私人信息；
+- 角色自身状态；
+- 允许感知的资源和风险。
 
-- 工作记忆：当前轮观察、近期对话和活跃目标；
-- 情节记忆：角色亲历或获知的具体事件，带来源与时间；
-- 语义记忆：由多次事件归纳出的关系判断、人物印象和长期知识。
+禁止把完整 `WorldState`、其他角色私有记忆或隐藏目标传入角色 prompt。
 
-### 9.2 检索排序
+### 阶段 3：检索记忆
 
-`score = 0.45 × relevance + 0.25 × salience + 0.20 × goal_match + 0.10 × recency`
+建议检索分数：
 
-先用 SQLite 全文或关键词基线；只有当记忆规模明显增大时再引入 embedding。每次被检索的记忆 ID 写入 trace，以便判断角色行为究竟源于哪条记忆。
+```text
+score =
+  0.35 × relevance
++ 0.25 × goal_match
++ 0.20 × salience
++ 0.10 × recency
++ 0.10 × relationship_match
+```
 
-### 9.3 防泄漏机制
+检索前先按 `owner_id` 和可见性过滤。每次检索必须保存命中的记忆 ID 和分数。
 
-- 不把完整 `WorldState` 直接传给角色；
-- 使用 `ObservationBuilder(character_id)` 生成白名单字段；
-- 每个事件显式记录 `participants`、`observers` 和 `private_payloads`；
-- 角色决策必须引用证据事件 ID；
-- 检查引用是否属于该角色的知识集合；
-- 用对抗测试注入只有单个角色知道的 canary secret，统计其他角色是否无来源提及。
+### 阶段 4：生成角色行动
 
-## 10. 评测方案
+每个角色输出一个 `ActionIntent`。提示词包含：
 
-### 10.1 指标
+- 稳定角色规则；
+- 当前目标与优先级；
+- 过滤后的观察；
+- 检索到的记忆；
+- 当前信念；
+- 可用行动类型；
+- 必须引用的证据事件 ID。
 
-| 维度 | 自动指标 | 人工评测 |
-|---|---|---|
-| 角色一致性 | 与角色目标冲突的行动率；人格规则违背数 | 1–5 分角色可信度 |
-| 信息泄漏 | 无可见来源的私密事实提及率 | 判断是否属于合理推断 |
-| 长期记忆 | 延迟若干轮后的事实召回准确率 | 记忆是否自然影响行为 |
-| 世界一致性 | schema/invariant 失败数；资源与时空冲突数 | 情节是否自洽 |
-| 叙事连贯性 | 未铺垫实体率；事件覆盖率 | 因果连贯、节奏、可读性 |
-| 成本性能 | 每轮 token、费用、延迟、失败重试率 | — |
+角色可选择错误行动，但不能使用其不知道的信息。
 
-### 10.2 实验设计
+### 阶段 5：行动规范化与冲突裁决
 
-- 固定 3 个场景、5 个随机种子，每个配置运行 20 轮；
-- 对照 A：只使用最近对话，无长期记忆；
-- 对照 B：摘要记忆；
-- 实验 C：事件记忆 + 检索 + 信念状态；
-- 消融：关闭证据事件引用、关闭连续性检查、关闭行动规范化；
-- 保存模型、温度、提示版本和随机种子，保证可复现；
-- 人工评测采用匿名成对比较，并报告评分说明与一致性。
+- 先验证 schema、角色权限、资源和地点；
+- 合并兼容行动；
+- 标记竞争同一资源、互相阻止或条件矛盾的行动；
+- 先用确定性规则裁决；
+- 仅把无法由规则处理的社会语义冲突交给裁决模型；
+- 裁决输出事件候选，而不是直接生成章节。
+
+### 阶段 6：应用状态更新
+
+State Reducer：
+
+- 校验 patch 路径；
+- 检查资源不能低于允许范围；
+- 检查角色不能同时处于多个地点；
+- 检查事件参与者与观察者权限；
+- 生成 before/after diff；
+- 在同一事务中写入状态快照和事件。
+
+### 阶段 7：更新记忆和信念
+
+同一事件可为不同角色生成不同记忆：
+
+- 参与者获得细节记忆；
+- 观察者获得可见部分；
+- 被转述者获得带来源的二手记忆；
+- 未知情角色不写入任何相关内容。
+
+信念更新必须保留旧值、证据来源和置信度变化。
+
+### 阶段 8：连续性与泄漏检查
+
+检查项包括：
+
+- 行动引用了角色不可见的事件；
+- 角色知道其他人的秘密；
+- 地点、时间或资源矛盾；
+- 行动违反不可变官方设定；
+- 关系变化没有来源；
+- 已关闭悬念被无原因重新打开；
+- 叙事文本引入未确认事实。
+
+严重错误阻断提交；一般问题写入警告并进入失败案例集。
+
+## 8. 叙事生成
+
+叙事生成分两步：
+
+1. `EpisodePlanner` 将 3–5 轮事件整理为场景顺序、视角、冲突和结尾钩子；
+2. `NarrativeWriter` 只根据计划和已确认事件写作。
+
+输出章节必须附带：
+
+- 覆盖的事件 ID；
+- 使用的角色视角；
+- 新增推断列表；
+- 连续性检查结果。
+
+Narrative Validator 检查：
+
+- 是否遗漏关键事件；
+- 是否出现来源不明的新事实；
+- 是否把角色内心错误地写成世界真值；
+- 是否大量复现原作对白或官方文案；
+- 是否将原创情节误称为官方剧情。
+
+## 9. Prompt 体系
+
+建议目录：
+
+```text
+prompts/
+├─ character_decision/
+│  ├─ system_v1.jinja2
+│  └─ user_v1.jinja2
+├─ adjudication/
+├─ memory_update/
+├─ continuity_check/
+├─ episode_plan/
+└─ narrative_writer/
+```
+
+每个模板具有：
+
+- 唯一版本号；
+- 输入 schema；
+- 输出 schema；
+- 允许和禁止的信息；
+- 失败回退策略；
+- 对应的回归测试集。
+
+解析失败时最多修复两次。仍失败则返回可解释的保守行动，例如 `wait`，不得让未校验文本进入状态更新。
+
+## 10. 存储设计
+
+SQLite MVP 表：
+
+- `runs`
+- `rounds`
+- `characters`
+- `canon_facts`
+- `world_snapshots`
+- `actions`
+- `events`
+- `memories`
+- `beliefs`
+- `relationship_changes`
+- `narrative_episodes`
+- `model_calls`
+- `evaluation_results`
+
+世界状态每轮保存快照，事件单独追加。恢复时读取最近快照并重放其后的事件。
+
+记忆内容可建立 FTS5 虚拟表。只有在以下情况出现时迁移到 pgvector：
+
+- 单角色记忆超过数千条；
+- 关键词检索召回明显不足；
+- 需要多实验并发或服务化部署；
+- 需要结构化过滤与语义搜索的混合检索。
 
 ## 11. 仓库结构
 
 ```text
-palace-narrative-agents/
+astral-narrative-agents/
 ├─ README.md
 ├─ pyproject.toml
 ├─ .env.example
@@ -229,151 +472,288 @@ palace-narrative-agents/
 │  ├─ models.yaml
 │  └─ experiments/
 ├─ scenarios/
-│  └─ chengyao_court/
-│     ├─ world.yaml
+│  └─ sealed_transport/
+│     ├─ scenario.yaml
 │     ├─ characters.yaml
+│     ├─ canon_facts.yaml
 │     └─ opening_events.yaml
-├─ src/palace_agents/
-│  ├─ domain/          # Pydantic 模型与不变量
-│  ├─ agents/          # 角色决策逻辑
-│  ├─ memory/          # 写入、摘要、检索
-│  ├─ simulation/      # 编排、裁决、reducer
-│  ├─ narrative/       # 连续性检查与叙事生成
-│  ├─ evaluation/      # 指标、实验运行器
-│  ├─ storage/         # SQLite 与 trace
+├─ src/astral_agents/
+│  ├─ domain/
+│  ├─ agents/
+│  ├─ memory/
+│  ├─ simulation/
+│  ├─ narrative/
+│  ├─ evaluation/
+│  ├─ storage/
 │  └─ cli.py
 ├─ prompts/
 ├─ tests/
 │  ├─ unit/
 │  ├─ integration/
+│  ├─ regression/
 │  └─ scenarios/
-├─ app/                # 可选 Streamlit 演示
+├─ app/
 ├─ docs/
 │  ├─ implementation_plan.zh-CN.md
 │  ├─ architecture.md
 │  └─ experiment_report.md
-└─ runs/               # 默认 gitignore，仅保留示例
+└─ runs/
 ```
 
-## 12. 里程碑与工作安排
+`runs/` 默认不提交真实 API 响应和完整私有 trace，只保留脱敏示例。
 
-### 第 1 周：需求冻结与可复现骨架
+## 12. 实现路径
 
-- 定义研究问题、MVP 边界和 5 个角色；
-- 建立 Python 项目、配置、日志和测试；
-- 完成核心 schema 与一个无 LLM 的脚本化模拟。
+### 第 0 阶段：研究与内容准备（2–3 天）
 
-验收：可用固定行动运行 5 轮，输出状态 diff 和事件日志。
+- 确定 4–6 个角色和一个封闭事件；
+- 建立最小官方设定事实表；
+- 明确角色公开目标、隐藏目标和信息权限；
+- 制作 20 个用于评测的设定问答和冲突案例；
+- 写明非官方、非商业和内容来源政策。
 
-### 第 2 周：角色决策与权限观察
+完成标准：场景无需 LLM 也能由人工解释其规则、状态和终止条件。
 
-- 实现 `ObservationBuilder`；
-- 接入一个 LLM，完成结构化决策；
-- 增加 prompt 版本和调用 trace。
+### 第 1 周：项目骨架与核心 schema
 
-验收：角色无法在输入中看到未授权字段，解析失败可恢复。
+- 建立 `pyproject.toml`、lint、type check 和 pytest；
+- 实现 CanonFact、CharacterProfile、WorldState、ActionIntent、CanonicalEvent；
+- 实现 YAML 配置加载与交叉引用校验；
+- 编写一个完全脚本化的 5 轮模拟。
 
-### 第 3 周：裁决与世界状态更新
+完成标准：固定行动能够生成事件、状态 diff 和快照。
 
-- 实现行动类型、冲突裁决和 reducer；
-- 编写资源、关系、时空与角色状态不变量；
-- 对关键 reducer 做单元测试。
+### 第 2 周：事件存储与 reducer
 
-验收：5 个角色可连续运行 10 轮且无非法状态。
+- 建立 SQLite schema 和 repository 层；
+- 实现事件追加、状态快照和 checkpoint 恢复；
+- 实现移动、对话、调查和资源操作 reducer；
+- 为世界不变量编写单元和性质测试。
+
+完成标准：相同输入和随机种子产生相同结构化状态。
+
+### 第 3 周：角色观察和结构化决策
+
+- 实现 ObservationBuilder；
+- 接入第一个 LLM；
+- 实现 ActionIntent 结构化输出、验证、重试和保守回退；
+- 保存模型调用 trace。
+
+完成标准：角色 prompt 中不存在未授权字段，解析成功率达到 95% 以上。
 
 ### 第 4 周：私有记忆与信念
 
-- 完成三层记忆、来源追踪、检索排序和信念更新；
-- 加入 canary secret 泄漏测试。
+- 实现情节、语义、关系和目标记忆；
+- 建立 FTS5 检索与排序；
+- 实现信念置信度和证据来源；
+- 为不同角色生成事件视角。
 
-验收：角色能在延迟 5 轮后引用相关旧事件，泄漏可被定位。
+完成标准：角色能在延迟 5 轮后引用相关事件，且引用来源可追溯。
 
-### 第 5 周：叙事生成与连续性检查
+### 第 5 周：多角色冲突裁决
 
-- 每 3–5 轮生成一节叙事；
-- 检查新增事实、时空冲突、角色知识来源；
-- 建立叙事文本到事件 ID 的映射。
+- 实现同步收集行动；
+- 建立冲突分类和规则优先裁决；
+- 对社会语义冲突接入裁决模型；
+- 实现原子事务提交。
 
-验收：叙事覆盖主要事件，且未确认事实新增率低于预设阈值。
+完成标准：5 个角色可连续运行 15 轮且无非法状态。
 
-### 第 6 周：持久化与实验运行器
+### 第 6 周：连续性和泄漏测试
 
-- SQLite 保存运行、事件、记忆、状态快照和指标；
-- 支持从 checkpoint 恢复；
-- 批量运行不同种子和配置。
+- 建立知识集合检查；
+- 注入单角色 canary secret；
+- 实现地点、资源、事件顺序和官方设定检查；
+- 建立严重度、阻断和警告策略。
 
-验收：中断后可恢复；同配置、同种子能重放结构化流程。
+完成标准：明显的秘密泄漏和无来源事件引用能够被自动检测。
 
-### 第 7 周：评测基线与消融
+### 第 7 周：章节规划与叙事生成
 
-- 实现一致性、泄漏、召回、连续性和成本指标；
-- 运行记忆策略对照与关键模块消融；
-- 抽取人工评测样本。
+- 实现 EpisodePlanner 与 NarrativeWriter；
+- 限制叙事输入为已确认事件；
+- 建立事件覆盖和新增事实检测；
+- 生成首个 20 轮、4 章节 demo。
 
-验收：自动生成对比表和失败案例集。
+完成标准：章节中的关键事实能映射回事件 ID。
 
-### 第 8 周：演示界面
+### 第 8 周：批量实验和评测
 
-- 用 Streamlit 展示角色卡、关系图、时间线、私有记忆和叙事章节；
-- 提供单步执行、暂停、回放和导出。
+- 建立固定场景、随机种子和配置矩阵；
+- 对比无长期记忆、摘要记忆和事件检索记忆；
+- 消融证据引用、连续性检查和行动规范化；
+- 统计 token、费用、延迟、失败和重试。
 
-验收：非开发者可启动场景、运行轮次并查看状态变化。
+完成标准：自动生成实验表、失败案例集和可复现配置。
 
-### 第 9–10 周：稳健性与报告
+### 第 9 周：可视化 demo
 
-- 修复高频失败，增加回归场景；
-- 总结框架选择、实验结果、局限与伦理风险；
-- 准备研究 demo、技术报告或论文方法部分。
+- 用 Streamlit 展示运行控制；
+- 展示角色卡、关系图、时间线、事件日志和章节；
+- 为研究者提供角色私有记忆调试视图；
+- 支持暂停、单步、恢复和导出。
 
-验收：完成可重复 demo、实验表格、失败分析和系统设计文档。
+完成标准：非开发者能启动场景、执行轮次并解释状态变化。
 
-## 13. 测试与验收标准
+### 第 10 周：稳健性与报告
 
-MVP 完成定义：
+- 修复高频失败；
+- 增加回归案例；
+- 完成人工盲评；
+- 总结架构、实验、失败、局限和伦理风险；
+- 准备 demo 和技术报告。
 
-- 5 个角色、20 轮、至少 4 个叙事章节；
+完成标准：达到 MVP 验收标准并完成可重复演示。
+
+## 13. 评测方案
+
+### 13.1 角色一致性
+
+- 硬约束违反率；
+- 与当前高优先级目标冲突的行动率；
+- 无事件依据的人格或态度突变率；
+- 人工 1–5 分角色可信度；
+- 同一场景不同种子下的行为边界稳定性。
+
+### 13.2 信息泄漏
+
+- 无合法来源的私人事实提及率；
+- 非法 evidence event ID 引用率；
+- canary secret 泄漏率；
+- 将推测表述为确定事实的比例。
+
+### 13.3 长期记忆
+
+- 延迟 5、10、20 轮的事实召回；
+- 关键承诺和关系事件的召回；
+- 错误信念在新证据后的修正率；
+- 检索 precision@k 和人工相关性。
+
+### 13.4 世界与叙事连续性
+
+- schema 和世界不变量失败数；
+- 时空、资源和因果冲突数；
+- 章节关键事件覆盖率；
+- 叙事新增未确认事实率；
+- 未解决悬念的合理延续率。
+
+### 13.5 原创性与内容边界
+
+- 与官方文本的长片段重合检测；
+- 大量复现原作对白的样本数；
+- 未公开或无法验证资料引用数；
+- 非官方声明是否出现在所有对外交付物。
+
+### 13.6 成本与性能
+
+- 每角色每轮 token；
+- 每完整场景费用；
+- p50/p95 每轮延迟；
+- 模型调用失败和重试率；
+- checkpoint 恢复时间。
+
+## 14. 实验设计
+
+至少运行：
+
+- 3 个固定场景；
+- 每场景 5 个随机种子；
+- 每配置 20 轮；
+- 3 种记忆策略；
+- 2 个关键模块消融。
+
+对照配置：
+
+1. 仅最近对话，无长期记忆；
+2. 定期摘要记忆；
+3. 来源化事件记忆 + 检索 + 信念；
+4. 关闭证据事件引用；
+5. 关闭连续性检查。
+
+人工评测采用匿名成对比较，评分者看不到模型或配置名称。
+
+## 15. MVP 验收标准
+
+- 4–6 个角色连续运行 20 轮；
+- 生成至少 4 个章节；
+- 所有结构化状态通过 schema；
+- 状态 reducer 无未处理非法状态；
+- 角色 prompt 不包含其他角色私有状态；
 - 结构化输出解析成功率不低于 95%（含一次修复）；
-- 所有状态更新通过 schema 和不变量检查；
-- 每个角色的记忆、信念和提示上下文可独立审计；
-- canary secret 的无来源泄漏率有明确测量，关键泄漏能回溯；
-- 同一实验配置能够保存、恢复和导出；
-- 至少完成 3 种记忆配置或 2 个关键模块的对照实验；
-- README 含安装、配置、运行、评测和数据隐私说明。
+- 每个角色的关键决策可追溯到观察或记忆；
+- 明显 canary secret 泄漏可被检测；
+- 章节关键事件覆盖率达到预设阈值；
+- 运行可保存、暂停、恢复和导出；
+- 实验可根据配置和随机种子复现；
+- README、界面和报告包含非官方研究声明。
 
-## 14. 风险与应对
+## 16. 主要风险与应对
 
-- **角色同质化**：将人格描述转为可操作的偏好、禁忌和决策规则，并用冲突场景测试。
-- **提示上下文膨胀**：限制检索条数，定期摘要，并把结构化状态与自然语言记忆分开。
-- **信息泄漏**：白名单观察、来源引用、canary secret 和无权限字段单元测试四层防护。
-- **状态漂移**：事件日志作为事实源，reducer 原子更新，叙事生成只读。
-- **LLM 不稳定**：schema、重试、保守回退、固定种子与完整 trace。
-- **成本超预算**：小模型负责规范化和检查，大模型只处理关键决策或叙事；缓存稳定输入。
-- **历史人物敏感性**：采用“历史启发但完全架空”的角色和王朝，在文档中明确非史实重现。
-- **评测主观性**：自动指标与盲评结合，公开 rubric，并报告评审一致性。
+| 风险 | 表现 | 应对 |
+|---|---|---|
+| 角色同质化 | 所有人采用相似策略 | 把人格转为行为规则、偏好和禁忌 |
+| 信息泄漏 | 角色知道他人秘密 | 白名单观察、证据引用、canary 测试 |
+| 状态漂移 | 文本与真值不一致 | 事件溯源、确定性 reducer、叙事只读 |
+| 上下文膨胀 | token 和延迟快速增长 | 检索、摘要、分层记忆和上下文预算 |
+| 模型不稳定 | JSON 失败、行动越权 | schema、重试、保守回退和回归测试 |
+| 评测主观 | 结果难比较 | 自动指标、盲评、rubric 和固定数据集 |
+| 过度依赖框架 | 无法解释状态变化 | 业务状态和规则独立于 agent 框架 |
+| 内容侵权 | 复制官方文本或资产 | 最小公开事实集、改写、来源记录、非商业声明 |
 
-## 15. 第一阶段任务清单
+## 17. 内容与知识产权要求
 
-第一周即可建立以下 issues：
+本项目必须明确标注：
 
-1. Scaffold Python package, CI, lint and tests
-2. Define domain schemas and world invariants
-3. Author Chengyao Court scenario and five character cards
-4. Implement permission-filtered observation builder
-5. Implement structured character decision call
-6. Implement action normalization and deterministic reducer
-7. Add SQLite event store and checkpoints
-8. Add private memory and evidence-source tracking
-9. Build leakage and continuity evaluation suite
-10. Generate episode text from canonical events
-11. Add batch experiment runner
-12. Build minimal Streamlit trace viewer
+> 本项目为非官方、非商业的研究与同人原型，与 HoYoverse 无隶属或授权关系。《崩坏：星穹铁道》及其角色和世界观相关权利归相应权利人所有；系统生成的原创事件和章节不属于官方剧情。
 
-## 16. 预期成果
+实施时：
 
-- 可运行的 Python 原型与演示界面；
-- 架空宫廷场景、角色卡和可复现实验配置；
-- 结构化运行日志、状态快照和叙事章节；
-- 角色一致性、信息泄漏、长期记忆与叙事连贯性的评测结果；
-- 技术报告，重点说明系统设计、实验结果、失败案例、局限和下一步研究方向。
+- 只使用已经公开、可验证并记录来源的设定；
+- 不使用泄漏、测试服或未经证实的资料；
+- 不抓取或再分发完整游戏脚本、语音、角色模型、CG 和其他官方资产；
+- 不把大量官方对白作为 few-shot 示例；
+- 不将模型生成内容描述为官方事实；
+- 若转为商业产品，先停止公开发布并重新进行授权和法律评估。
 
-若结果稳定，可进一步研究动态目标形成、角色反思、层级规划、人类导演介入、跨章节记忆压缩、因果图评测，以及多模型角色分工。
+## 18. 第一批 GitHub Issues
+
+1. Scaffold Python package, lint, typing and tests
+2. Define core domain schemas and invariants
+3. Author the first sealed-scenario configuration
+4. Build the minimum canon fact registry
+5. Implement event store and deterministic reducer
+6. Implement permission-filtered observations
+7. Add structured character decision generation
+8. Implement private memory and belief tracking
+9. Add multi-action conflict adjudication
+10. Build leakage and continuity test suite
+11. Generate narrative episodes from canonical events
+12. Add batch experiment runner and metrics
+13. Build Streamlit trace viewer
+14. Write experiment report and failure analysis
+
+## 19. 技术参考
+
+- LangGraph：<https://reference.langchain.com/python/langgraph/overview>
+- OpenAI Agents SDK：<https://openai.github.io/openai-agents-python/>
+- Microsoft AutoGen：<https://microsoft.github.io/autogen/stable/>
+- CrewAI：<https://docs.crewai.com/>
+- Pydantic：<https://docs.pydantic.dev/latest/concepts/models/>
+- SQLite FTS5：<https://www.sqlite.org/fts5.html>
+- pgvector：<https://github.com/pgvector/pgvector>
+- Arize Phoenix：<https://arize.com/docs/phoenix>
+- LangSmith Evaluation：<https://docs.langchain.com/langsmith/evaluation-concepts>
+- 《崩坏：星穹铁道》官网：<https://hsr.hoyoverse.com/>
+- Fan Creations Guide：<https://www.hoyolab.com/article/17883171>
+
+## 20. 最终建议
+
+默认采用：
+
+> **Python + Pydantic + 原生确定性 reducer + LangGraph + SQLite/FTS5 + FastAPI/Streamlit + Phoenix**
+
+正确的实现顺序是：
+
+> **先建立 schema、事件日志、权限和 reducer，再接入角色 LLM；先验证关键词记忆与来源追踪，再考虑向量数据库；先建立失败检测和评测，再扩展角色数量与故事长度。**
+
+这样能够把最危险的状态漂移、信息泄漏和不可复现问题控制在系统底层，而不是依赖更长的提示词临时修补。
