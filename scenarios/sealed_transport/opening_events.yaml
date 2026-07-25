@@ -1,0 +1,31 @@
+opening_events:
+  - event_type: scenario_opened
+    participants: [march_7th, dan_heng, himeko, welt]
+    observers: [march_7th, dan_heng, himeko, welt]
+    public_summary: "四人分散进入运输舰的关键区域；外部通信随即中断。"
+    tags: [opening, public]
+  - event_type: private_briefing
+    participants: [march_7th]
+    observers: [march_7th]
+    private_payloads:
+      march_7th: "你的相机时钟刚刚校准过；如果舰内时间异常，影像可以成为独立证据。"
+    tags: [private, photo]
+  - event_type: private_briefing
+    participants: [dan_heng]
+    observers: [dan_heng]
+    private_payloads:
+      dan_heng: "你拥有档案系统的只读验证权限；任何写入操作都应被视为高风险。"
+    tags: [private, archive]
+  - event_type: private_briefing
+    participants: [himeko]
+    observers: [himeko]
+    private_payloads:
+      himeko: "人工覆盖必须由至少三组独立证据签名，不能以团队直觉代替。"
+    tags: [private, command]
+  - event_type: private_briefing
+    participants: [welt]
+    observers: [welt]
+    private_payloads:
+      welt: "低能级相位回声可能可逆，但强行放大会让旧导航状态永久固化。"
+    tags: [private, phase]
+

@@ -1,0 +1,50 @@
+canon_facts:
+  - id: canon_march_express
+    subject_id: march_7th
+    predicate: "affiliation"
+    value: "星穹列车成员"
+    source_url: "https://hsr.hoyoverse.com/en-us/character?worldIndex=1&charIndex=3"
+    source_version: "accessed-2026-07-25"
+    confidence: official
+    immutable: true
+  - id: canon_march_camera
+    subject_id: march_7th
+    predicate: "public_trait"
+    value: "热衷用相机记录旅途"
+    source_url: "https://hsr.hoyoverse.com/en-us/character?worldIndex=1&charIndex=3"
+    source_version: "accessed-2026-07-25"
+    confidence: official
+    immutable: true
+  - id: canon_dan_express
+    subject_id: dan_heng
+    predicate: "affiliation"
+    value: "星穹列车成员"
+    source_url: "https://hsr.hoyoverse.com/en-us/character?worldIndex=1&charIndex=2"
+    source_version: "accessed-2026-07-25"
+    confidence: official
+    immutable: true
+  - id: canon_dan_archives
+    subject_id: dan_heng
+    predicate: "public_role"
+    value: "负责整理与记录列车资料"
+    source_url: "https://hsr.hoyoverse.com/en-us/character?worldIndex=1&charIndex=2"
+    source_version: "accessed-2026-07-25"
+    confidence: official
+    immutable: true
+  - id: canon_himeko_express
+    subject_id: himeko
+    predicate: "public_role"
+    value: "星穹列车的领航者"
+    source_url: "https://hsr.hoyoverse.com/en-us/character?worldIndex=1&charIndex=1"
+    source_version: "accessed-2026-07-25"
+    confidence: official
+    immutable: true
+  - id: canon_welt_express
+    subject_id: welt
+    predicate: "affiliation"
+    value: "星穹列车成员"
+    source_url: "https://hsr.hoyoverse.com/en-us/character?worldIndex=1&charIndex=4"
+    source_version: "accessed-2026-07-25"
+    confidence: official
+    immutable: true
+

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astral-narrative-agents"
+version = "0.1.0"
+description = "An event-sourced, multi-agent narrative simulation research prototype."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Astral Narrative Agents contributors" }]
+dependencies = [
+  "pydantic>=2.8,<3",
+  "PyYAML>=6.0,<7",
+  "typer>=0.12,<1",
+  "rich>=13.7,<15",
+  "streamlit>=1.39,<2",
+]
+
+[project.optional-dependencies]
+llm = ["openai>=1.109,<3"]
+dev = [
+  "pytest>=7.4,<9",
+  "ruff>=0.8,<1",
+]
+
+[project.scripts]
+astral = "astral_agents.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["astral_agents"]

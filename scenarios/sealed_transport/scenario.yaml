@@ -1,0 +1,177 @@
+id: sealed_transport
+version: "1.0.0"
+title: "静默航线"
+subtitle: "一艘失联运输舰上的十二轮异常调查"
+premise: >-
+  星穹列车组收到一艘无人运输舰“塔拉萨”的短促求援。登舰后，所有外部通信中断，
+  航线被未知的相位回声锁定。四人必须在生命维持跌破安全线前，拼合分散证据、
+  修复关键系统，并决定是否启动一次不可逆的航线校准。
+opening_briefing: >-
+  舰内没有人员伤亡迹象，也没有确认的敌人。真正的威胁是持续衰减的能源、
+  互相矛盾的日志，以及每个人手中不完整的事实。
+max_rounds: 12
+episode_interval: 3
+start_phase: "接触"
+
+locations:
+  - id: command_deck
+    display_name: "指挥舱"
+    summary: "航线主控与广播系统所在区域；观景窗外的星光出现细微重影。"
+    risk: 0.20
+  - id: archive
+    display_name: "数据档案室"
+    summary: "保存货运清单、门禁记录与导航缓存的隔离节点。"
+    risk: 0.32
+  - id: reactor
+    display_name: "相位机舱"
+    summary: "备用反应堆与相位校准器相连，空气里有持续的低频振动。"
+    risk: 0.55
+  - id: cargo_bay
+    display_name: "货舱"
+    summary: "固定架完好，但一只记录箱的封条时间与舰内时钟不一致。"
+    risk: 0.38
+  - id: comm_array
+    display_name: "通信阵列"
+    summary: "外部天线没有物理损伤，回传信号却像被自身复制后抵消。"
+    risk: 0.48
+
+adjacency:
+  command_deck: [archive, comm_array]
+  archive: [command_deck, cargo_bay]
+  reactor: [cargo_bay, comm_array]
+  cargo_bay: [archive, reactor]
+  comm_array: [command_deck, reactor]
+
+resources:
+  - id: power
+    display_name: "可用能源"
+    initial: 72
+    minimum: 0
+    maximum: 100
+    unit: "%"
+    public: true
+  - id: life_support
+    display_name: "生命维持"
+    initial: 88
+    minimum: 0
+    maximum: 100
+    unit: "%"
+    public: true
+  - id: comm_signal
+    display_name: "通信同步"
+    initial: 12
+    minimum: 0
+    maximum: 100
+    unit: "%"
+    public: true
+  - id: phase_stability
+    display_name: "相位稳定"
+    initial: 34
+    minimum: 0
+    maximum: 100
+    unit: "%"
+    public: true
+  - id: evidence
+    display_name: "证据完整度"
+    initial: 0
+    minimum: 0
+    maximum: 10
+    unit: "/10"
+    public: true
+
+active_conflicts:
+  - "先修复维生系统还是先验证航线校准"
+  - "矛盾日志来自人为篡改还是相位回声"
+open_threads:
+  - echo_origin
+  - route_lock
+  - cargo_timestamp
+
+clues:
+  - id: manifest_hash
+    display_name: "货运清单哈希"
+    location_id: archive
+    discoverers: [dan_heng, himeko]
+    earliest_round: 1
+    public_summary: "档案缓存显示同一份货运清单存在两组互斥哈希。"
+    private_detail: "旧哈希早于求援信号十二分钟，差异只涉及相位校准器的运输编号。"
+    tags: [archive, manifest, route_lock]
+    evidence_points: 1.5
+    sets_flag: manifest_verified
+  - id: frozen_frame
+    display_name: "凝固影像帧"
+    location_id: cargo_bay
+    discoverers: [march_7th]
+    earliest_round: 1
+    public_summary: "一张即时影像捕捉到货舱时钟在相邻画面中重复了同一秒。"
+    private_detail: "重复帧没有剪辑痕迹；记录箱封条的反光在第二帧发生了相位偏移。"
+    tags: [photo, timestamp, cargo_timestamp]
+    evidence_points: 1.5
+    sets_flag: frame_verified
+  - id: phase_residue
+    display_name: "相位残留谱"
+    location_id: reactor
+    discoverers: [welt]
+    earliest_round: 1
+    public_summary: "机舱残留谱更像封闭回声，而不是外部入侵造成的撕裂。"
+    private_detail: "波形每七十七码回到起点，说明运输舰正在重复广播自身的旧导航状态。"
+    tags: [phase, reactor, echo_origin]
+    evidence_points: 1.5
+    sets_flag: residue_verified
+  - id: captain_override
+    display_name: "舰长覆盖指令"
+    location_id: command_deck
+    discoverers: [himeko, welt]
+    earliest_round: 1
+    public_summary: "主控台保留一条未执行的人工覆盖指令，目标是切断旧导航缓存。"
+    private_detail: "覆盖指令需要来自三个独立系统的证据签名，强行执行会消耗大量能源。"
+    tags: [command, override, route_lock]
+    evidence_points: 1.0
+    sets_flag: override_found
+  - id: canceling_signal
+    display_name: "抵消信号"
+    location_id: comm_array
+    discoverers: [dan_heng, march_7th]
+    earliest_round: 2
+    public_summary: "通信阵列并非静默，而是在同时发送两段彼此抵消的求援信号。"
+    private_detail: "较旧的一段信号携带与货运清单旧哈希一致的时间戳。"
+    tags: [signal, comm, echo_origin]
+    evidence_points: 1.5
+    resolves_thread: echo_origin
+    sets_flag: signal_separated
+  - id: route_solution
+    display_name: "航线校准解"
+    location_id: command_deck
+    discoverers: [himeko]
+    earliest_round: 4
+    public_summary: "三组独立证据可以组成安全的单向航线校准解。"
+    private_detail: "校准不会改写历史记录，只会让当前导航状态停止与旧缓存互相抵消。"
+    tags: [command, solution, route_lock]
+    evidence_points: 2.0
+    resolves_thread: route_lock
+    sets_flag: solution_ready
+  - id: seal_explanation
+    display_name: "封条时间解释"
+    location_id: cargo_bay
+    discoverers: [march_7th, dan_heng]
+    earliest_round: 4
+    public_summary: "封条时间矛盾来自回声缓存写回，而非有人重新开启记录箱。"
+    private_detail: "影像帧、门禁日志和货运哈希三者的偏移量完全一致。"
+    tags: [cargo, seal, timestamp]
+    evidence_points: 1.0
+    resolves_thread: cargo_timestamp
+    sets_flag: seal_explained
+
+resolution:
+  evidence_required: 6.0
+  repaired_resources: [comm_signal, phase_stability]
+  minimum_resource_ratio: 0.40
+  earliest_success_round: 10
+  failure_resource: life_support
+  failure_threshold: 18
+
+constraints:
+  - "角色只能使用自己观察到或从记忆中检索到的事件作为证据。"
+  - "官方公开设定不可被场景事件覆盖。"
+  - "任何状态变化都必须来自已确认事件。"
+  - "叙事章节不能反向修改世界状态。"
