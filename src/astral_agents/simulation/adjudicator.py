@@ -39,6 +39,7 @@ def adjudicate_actions(
     events: list[CanonicalEvent] = []
     event_index = 1
     resource_claims: defaultdict[str, list[str]] = defaultdict(list)
+    reserved_clues: set[str] = set()
 
     for action in sorted(actions, key=lambda item: item.actor_id):
         issue = validate_action(action, observations[action.actor_id], state, bundle)
@@ -82,8 +83,13 @@ def adjudicate_actions(
             round_no,
             event_index,
             resource_claims,
+            reserved_clues,
         )
         events.append(generated)
+        if generated.event_type == "clue_discovered":
+            reserved_clues.update(
+                tag for tag in generated.tags if tag in bundle.scenario.clue_map
+            )
         event_index += 1
 
     decay_changes = []
@@ -177,6 +183,7 @@ def _event_for_action(
     round_no: int,
     event_index: int,
     resource_claims: dict[str, list[str]],
+    reserved_clues: set[str],
 ) -> CanonicalEvent:
     profile = bundle.character_map[action.actor_id]
     observers_here = sorted(
@@ -223,6 +230,7 @@ def _event_for_action(
             and clue.earliest_round <= round_no
             and (not clue.discoverers or action.actor_id in clue.discoverers)
             and clue.id not in state.discovered_clues
+            and clue.id not in reserved_clues
         ]
         if action.target_ids:
             candidates.sort(
@@ -396,4 +404,3 @@ def _event_id(round_no: int, index: int, kind: str, actor: str) -> str:
     compact_kind = kind.replace("_", "-")[:12]
     compact_actor = actor.replace("_", "-")[:10]
     return f"R{round_no:03d}-E{index:02d}-{compact_kind}-{compact_actor}"
-

@@ -11,6 +11,8 @@ def evaluate_run(repository: SQLiteRepository, run_id: str) -> dict[str, Any]:
     episodes = repository.get_episodes(run_id)
     findings = repository.get_findings(run_id)
     actions = [action for record in rounds for action in record.actions]
+    model_calls = [trace for record in rounds for trace in record.model_calls]
+    durations = sorted(record.duration_ms for record in rounds)
     evidence_actions = [action for action in actions if action.evidence_event_ids]
     cited_ids = {
         event_id for action in actions for event_id in action.evidence_event_ids
@@ -30,6 +32,11 @@ def evaluate_run(repository: SQLiteRepository, run_id: str) -> dict[str, Any]:
         "actions": len(actions),
         "events": len(events),
         "episodes": len(episodes),
+        "model_calls": len(model_calls),
+        "input_tokens": sum(trace.input_tokens for trace in model_calls),
+        "output_tokens": sum(trace.output_tokens for trace in model_calls),
+        "round_latency_p50_ms": _percentile(durations, 0.50),
+        "round_latency_p95_ms": _percentile(durations, 0.95),
         "critical_findings": sum(
             1 for finding in findings if finding.severity.value == "critical"
         ),
@@ -55,3 +62,9 @@ def evaluate_run(repository: SQLiteRepository, run_id: str) -> dict[str, Any]:
         "timeline_hash": repository.get_state(run_id).timeline_hash,
     }
 
+
+def _percentile(values: list[int], percentile: float) -> int:
+    if not values:
+        return 0
+    index = round((len(values) - 1) * percentile)
+    return values[index]

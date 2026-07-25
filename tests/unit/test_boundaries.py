@@ -1,6 +1,9 @@
 from astral_agents.domain.models import ActionIntent, ActionType
-from astral_agents.simulation.adjudicator import validate_action
-from astral_agents.simulation.checks import assert_observation_isolation
+from astral_agents.simulation.adjudicator import adjudicate_actions, validate_action
+from astral_agents.simulation.checks import (
+    assert_observation_isolation,
+    check_information_boundaries,
+)
 from astral_agents.simulation.observation import build_observation
 from astral_agents.simulation.reducer import create_initial_state
 
@@ -53,3 +56,65 @@ def test_character_cannot_reveal_unknown_clue(bundle) -> None:
     assert finding.code == "UNKNOWN_CLUE"
     assert finding.blocked
 
+
+def test_any_canary_repeated_in_an_action_blocks_the_round(bundle) -> None:
+    state = create_initial_state(bundle, "test-run", 42)
+    observations = {
+        character.id: build_observation(character.id, state, [], bundle)
+        for character in bundle.characters
+    }
+    actions = [
+        ActionIntent(
+            id="A-001-march_7th",
+            actor_id="march_7th",
+            round_no=1,
+            action_type=ActionType.WAIT,
+            rationale="M7-CANARY-GLASS-COMET",
+        ),
+        ActionIntent(
+            id="A-001-dan_heng",
+            actor_id="dan_heng",
+            round_no=1,
+            action_type=ActionType.WAIT,
+            public_content="WT-CANARY-GRAVITY-PAPER",
+        ),
+    ]
+
+    findings = check_information_boundaries(
+        actions, observations, bundle, round_no=1
+    )
+
+    assert [finding.code for finding in findings] == [
+        "CANARY_LEAK",
+        "CANARY_LEAK",
+    ]
+    assert all(finding.blocked for finding in findings)
+
+
+def test_simultaneous_investigations_reserve_a_clue_once(bundle) -> None:
+    state = create_initial_state(bundle, "test-run", 42)
+    state.locations["march_7th"] = "comm_array"
+    state.locations["dan_heng"] = "comm_array"
+    state.round_no = 1
+    observations = {
+        actor_id: build_observation(actor_id, state, [], bundle)
+        for actor_id in ["march_7th", "dan_heng"]
+    }
+    actions = [
+        ActionIntent(
+            id=f"A-002-{actor_id}",
+            actor_id=actor_id,
+            round_no=2,
+            action_type=ActionType.INVESTIGATE,
+            location_id="comm_array",
+            target_ids=["canceling_signal"],
+        )
+        for actor_id in observations
+    ]
+
+    result = adjudicate_actions(actions, observations, state, bundle, 2)
+
+    assert sum(event.event_type == "clue_discovered" for event in result.events) == 1
+    assert sum(
+        event.event_type == "investigation_completed" for event in result.events
+    ) == 1

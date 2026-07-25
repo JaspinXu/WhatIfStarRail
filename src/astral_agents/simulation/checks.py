@@ -48,12 +48,17 @@ def check_information_boundaries(
             if part
         )
         for canary, owner_id in canary_owners.items():
-            if canary in text and owner_id != action.actor_id:
+            if canary in text:
+                ownership = (
+                    "自己的审计标记"
+                    if owner_id == action.actor_id
+                    else f"属于 {owner_id} 的审计标记"
+                )
                 findings.append(
                     ValidationFinding(
                         code="CANARY_LEAK",
                         severity=Severity.CRITICAL,
-                        message=f"{action.actor_id} 提及了属于 {owner_id} 的私密 canary。",
+                        message=f"{action.actor_id} 在行动输出中复述了{ownership}。",
                         round_no=round_no,
                         actor_id=action.actor_id,
                         blocked=True,
@@ -156,4 +161,3 @@ def _critical(round_no: int, code: str, message: str) -> ValidationFinding:
         round_no=round_no,
         blocked=True,
     )
-

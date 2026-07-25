@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from contextlib import closing, contextmanager
 from pathlib import Path
@@ -162,6 +163,18 @@ class SQLiteRepository:
             FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS model_calls (
+            run_id TEXT NOT NULL,
+            round_no INTEGER NOT NULL,
+            actor_id TEXT NOT NULL,
+            call_index INTEGER NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            trace_json TEXT NOT NULL,
+            PRIMARY KEY (run_id, round_no, actor_id, call_index),
+            FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_events_run_round
             ON events(run_id, round_no);
         CREATE INDEX IF NOT EXISTS idx_memories_owner
@@ -306,6 +319,27 @@ class SQLiteRepository:
                             self._dump(hit),
                         ),
                     )
+            actor_call_counts: dict[str, int] = {}
+            for trace in record.model_calls:
+                call_index = actor_call_counts.get(trace.actor_id, 0) + 1
+                actor_call_counts[trace.actor_id] = call_index
+                connection.execute(
+                    """
+                    INSERT INTO model_calls(
+                        run_id, round_no, actor_id, call_index,
+                        provider, model, trace_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        record.run_id,
+                        record.round_no,
+                        trace.actor_id,
+                        call_index,
+                        trace.provider,
+                        trace.model,
+                        self._dump(trace),
+                    ),
+                )
             if episode:
                 connection.execute(
                     """
@@ -485,6 +519,18 @@ class SQLiteRepository:
         )
         return RoundRecord.model_validate_json(row["record_json"])
 
+    def get_snapshots(self, run_id: str) -> list[WorldState]:
+        return [
+            WorldState.model_validate_json(row["state_json"])
+            for row in self._all(
+                """
+                SELECT state_json FROM world_snapshots
+                WHERE run_id = ? ORDER BY round_no
+                """,
+                (run_id,),
+            )
+        ]
+
     def get_memories(self, run_id: str, owner_id: str | None = None) -> list[Memory]:
         sql = "SELECT memory_json FROM memories WHERE run_id = ?"
         params: tuple[Any, ...] = (run_id,)
@@ -496,6 +542,41 @@ class SQLiteRepository:
             Memory.model_validate_json(row["memory_json"])
             for row in self._all(sql, params)
         ]
+
+    def search_memory_ids(
+        self,
+        run_id: str,
+        owner_id: str,
+        query: str,
+        *,
+        limit: int = 20,
+    ) -> list[str]:
+        """Return owner-scoped FTS candidates; an empty list is a safe fallback."""
+        if not self.fts_enabled:
+            return []
+        tokens = list(
+            dict.fromkeys(
+                token.lower()
+                for token in re.findall(r"[A-Za-z0-9_]{2,}", query)
+            )
+        )[:12]
+        if not tokens:
+            return []
+        match_query = " OR ".join(f'"{token}"' for token in tokens)
+        try:
+            rows = self._all(
+                """
+                SELECT memory_id
+                FROM memories_fts
+                WHERE memories_fts MATCH ? AND run_id = ? AND owner_id = ?
+                ORDER BY bm25(memories_fts)
+                LIMIT ?
+                """,
+                (match_query, run_id, owner_id, limit),
+            )
+        except sqlite3.OperationalError:
+            return []
+        return [str(row["memory_id"]) for row in rows]
 
     def get_beliefs(self, run_id: str, owner_id: str | None = None) -> list[Belief]:
         sql = "SELECT belief_json FROM beliefs WHERE run_id = ?"

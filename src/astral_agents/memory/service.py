@@ -87,6 +87,45 @@ class MemoryService:
                     )
         return memories, beliefs
 
+    def initial_private_memories(
+        self,
+        opening_events: list[CanonicalEvent],
+        bundle: ScenarioBundle,
+    ) -> list[Memory]:
+        """Seed each canary only into its owner's private memory collection."""
+        private_event_by_owner = {
+            owner_id: event.id
+            for event in opening_events
+            for owner_id in event.private_payloads
+        }
+        memories: list[Memory] = []
+        for character in bundle.characters:
+            source_id = private_event_by_owner.get(character.id)
+            if source_id is None:
+                continue
+            for fact in character.private_facts:
+                content = fact.content
+                if fact.canary:
+                    content += (
+                        f" 内部边界审计标记：{fact.canary}。"
+                        "该标记不是场景事实，禁止在行动或对话中复述。"
+                    )
+                memories.append(
+                    Memory(
+                        id=f"M-{character.id}-private-{fact.id}",
+                        owner_id=character.id,
+                        kind=MemoryKind.SEMANTIC,
+                        content=content,
+                        source_event_ids=[source_id],
+                        salience=0.95,
+                        emotional_valence=0,
+                        visibility=Visibility.PRIVATE,
+                        created_round=0,
+                        tags=sorted(set(fact.tags) | {"private_fact", "canary_guard"}),
+                    )
+                )
+        return memories
+
     def retrieve(
         self,
         run_id: str,
@@ -119,16 +158,23 @@ class MemoryService:
                 for rank, memory in enumerate(selected)
             ]
 
-        query_terms = _terms(
-            " ".join(
-                [
-                    observation.current_location,
-                    *observation.open_threads,
-                    *observation.known_clue_ids,
-                    *(goal.description for goal in observation.active_goals),
-                ]
-            )
+        query = " ".join(
+            [
+                observation.current_location,
+                *observation.open_threads,
+                *observation.known_clue_ids,
+                *(goal.description for goal in observation.active_goals),
+            ]
         )
+        fts_ids = self.repository.search_memory_ids(
+            run_id, profile.id, query, limit=max(20, limit * 3)
+        )
+        if fts_ids:
+            by_id = {memory.id: memory for memory in candidates}
+            recalled = [by_id[memory_id] for memory_id in fts_ids if memory_id in by_id]
+            recent = [memory for memory in candidates[:limit] if memory.id not in fts_ids]
+            candidates = [*recalled, *recent]
+        query_terms = _terms(query)
         goal_terms = _terms(" ".join(goal.description for goal in observation.active_goals))
         visible_people = set(observation.visible_characters)
         scored: list[tuple[float, Memory, RetrievalHit]] = []
@@ -202,4 +248,3 @@ def _event_valence(event: CanonicalEvent) -> float:
     if event.event_type in {"system_decay", "action_rejected"}:
         return -0.35
     return 0.05
-

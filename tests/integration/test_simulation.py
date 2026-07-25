@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from astral_agents.domain.models import RunConfig, RunStatus
@@ -27,6 +28,8 @@ def test_complete_offline_demo_succeeds_and_replays(bundle, repository) -> None:
     assert not state.open_threads
     assert len(repository.get_episodes(run_id)) == 4
     assert replay.matched
+    assert replay.event_sources_consistent
+    assert replay.expected_timeline_hash == replay.actual_timeline_hash
     assert metrics["critical_findings"] == 0
     assert metrics["leakage_findings"] == 0
     assert metrics["evidence_validity_rate"] == 1.0
@@ -92,3 +95,70 @@ def test_memory_queries_are_owner_isolated(bundle, repository) -> None:
         assert memories
         assert {memory.owner_id for memory in memories} == {character.id}
 
+    dan_hits = repository.search_memory_ids(run_id, "dan_heng", "archive manifest")
+    assert dan_hits
+    dan_memory_ids = {
+        memory.id for memory in repository.get_memories(run_id, "dan_heng")
+    }
+    assert set(dan_hits) <= dan_memory_ids
+
+
+def test_canaries_are_seeded_only_into_their_owners_memories(
+    bundle, repository
+) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(
+        RunConfig(scenario_id=bundle.scenario.id, seed=3)
+    )
+
+    for owner in bundle.characters:
+        owner_text = " ".join(
+            memory.content
+            for memory in repository.get_memories(run_id, owner.id)
+        )
+        for character in bundle.characters:
+            for fact in character.private_facts:
+                if not fact.canary:
+                    continue
+                if character.id == owner.id:
+                    assert fact.canary in owner_text
+                else:
+                    assert fact.canary not in owner_text
+
+
+def test_replay_detects_event_table_tampering(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(
+        RunConfig(scenario_id=bundle.scenario.id, seed=42)
+    )
+    engine.run(run_id, rounds=2)
+    original = repository.get_events(run_id, start_round=1)[0]
+    tampered = original.model_copy(
+        update={"public_summary": f"{original.public_summary}（篡改）"}
+    )
+
+    with repository.transaction() as connection:
+        connection.execute(
+            """
+            UPDATE events
+            SET public_summary = ?, event_json = ?
+            WHERE run_id = ? AND event_id = ?
+            """,
+            (
+                tampered.public_summary,
+                json.dumps(
+                    tampered.model_dump(mode="json"),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                run_id,
+                tampered.id,
+            ),
+        )
+
+    replay = engine.replay(run_id)
+
+    assert not replay.matched
+    assert not replay.event_sources_consistent
+    assert replay.expected_timeline_hash != replay.actual_timeline_hash

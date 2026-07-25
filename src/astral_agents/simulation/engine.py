@@ -41,6 +41,9 @@ class ReplayResult:
     rounds_replayed: int
     expected_digest: str
     actual_digest: str
+    expected_timeline_hash: str
+    actual_timeline_hash: str
+    event_sources_consistent: bool
     matched: bool
 
 
@@ -65,6 +68,9 @@ class SimulationEngine:
         state.status = RunStatus.READY
         memories, beliefs = self.memory.form_memories(
             run_id, opening_events, self.bundle
+        )
+        memories.extend(
+            self.memory.initial_private_memories(opening_events, self.bundle)
         )
         manifest = RunManifest(
             run_id=run_id,
@@ -176,31 +182,26 @@ class SimulationEngine:
             )
         )
         if any(finding.blocked for finding in findings):
-            state_after = state_before.model_copy(deep=True)
-            state_after.round_no = round_no
-            state_after.status = RunStatus.BLOCKED
-            state_after.timeline_hash = hashlib.sha256(
-                f"{state_before.timeline_hash}|blocked|{round_no}".encode()
-            ).hexdigest()[:16]
-            events = [
-                CanonicalEvent(
-                    id=f"R{round_no:03d}-E99-audit-block",
-                    round_no=round_no,
-                    event_type="round_blocked",
-                    participants=[],
-                    observers=list(self.bundle.character_map),
-                    public_summary="连续性检查阻止了本轮状态变更；候选事件未被应用。",
-                    tags=["public", "audit", "blocked"],
-                )
-            ]
-            diffs = [
-                StateDiff(
-                    path="status",
-                    before=state_before.status.value,
-                    after=RunStatus.BLOCKED.value,
-                    label="运行状态",
-                )
-            ]
+            block_event = CanonicalEvent(
+                id=f"R{round_no:03d}-E99-audit-block",
+                round_no=round_no,
+                event_type="round_blocked",
+                participants=[],
+                observers=list(self.bundle.character_map),
+                public_summary="连续性检查阻止了本轮状态变更；候选事件未被应用。",
+                changes=[
+                    StateChange(
+                        kind="set_status",
+                        subject_id="run",
+                        value=RunStatus.BLOCKED.value,
+                    )
+                ],
+                tags=["public", "audit", "blocked"],
+            )
+            state_after, diffs = apply_event(
+                state_before, block_event, self.bundle
+            )
+            events = [block_event]
 
         new_memories, new_beliefs = self.memory.form_memories(
             run_id, events, self.bundle
@@ -243,19 +244,30 @@ class SimulationEngine:
     def replay(self, run_id: str) -> ReplayResult:
         records = self.repository.get_rounds(run_id)
         state = self.repository.get_state_at_round(run_id, 0)
-        for record in records:
-            for event in record.events:
-                state, _ = apply_event(state, event, self.bundle)
-            if record.state_after.status == RunStatus.BLOCKED:
-                state = record.state_after.model_copy(deep=True)
-        expected = self.repository.get_state(run_id).state_digest()
+        canonical_events = self.repository.get_events(run_id, start_round=1)
+        for event in canonical_events:
+            state, _ = apply_event(state, event, self.bundle)
+        record_events = [event for record in records for event in record.events]
+        event_sources_consistent = [
+            event.model_dump(mode="json") for event in canonical_events
+        ] == [event.model_dump(mode="json") for event in record_events]
+        expected_state = self.repository.get_state(run_id)
+        expected = expected_state.state_digest()
         actual = state.state_digest()
+        matched = (
+            expected == actual
+            and expected_state.timeline_hash == state.timeline_hash
+            and event_sources_consistent
+        )
         return ReplayResult(
             run_id=run_id,
             rounds_replayed=len(records),
             expected_digest=expected,
             actual_digest=actual,
-            matched=expected == actual,
+            expected_timeline_hash=expected_state.timeline_hash,
+            actual_timeline_hash=state.timeline_hash,
+            event_sources_consistent=event_sources_consistent,
+            matched=matched,
         )
 
     def _opening_events(self) -> list[CanonicalEvent]:
@@ -433,4 +445,3 @@ class SimulationEngine:
 def _derived_seed(seed: int, round_no: int, actor_id: str) -> int:
     payload = f"{seed}:{round_no}:{actor_id}".encode("utf-8")
     return int(hashlib.sha256(payload).hexdigest()[:16], 16)
-
