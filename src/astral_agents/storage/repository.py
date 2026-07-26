@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from astral_agents.domain.models import (
     Belief,
@@ -201,10 +202,11 @@ class SQLiteRepository:
 
     @staticmethod
     def _dump(model: Any) -> str:
-        if hasattr(model, "model_dump"):
-            payload = model.model_dump(mode="json")
-        else:
-            payload = model
+        payload = (
+            model.model_dump(mode="json")
+            if hasattr(model, "model_dump")
+            else model
+        )
         return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
     def create_run(

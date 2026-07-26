@@ -332,12 +332,12 @@ with st.sidebar:
         st.caption(f"数据库 · {DB_PATH.name}")
     quick_col, blank_col = st.columns(2)
     with quick_col:
-        if st.button("快速演示", type="primary", use_container_width=True):
+        if st.button("快速演示", type="primary", width="stretch"):
             with st.spinner("正在重建 10 轮事件链…"):
                 create_run(complete=True)
             st.rerun()
     with blank_col:
-        if st.button("单步新建", use_container_width=True):
+        if st.button("单步新建", width="stretch"):
             create_run(complete=False)
             st.rerun()
 
@@ -387,7 +387,9 @@ if not selected_run:
         ("02 / 场景真相", "只由确定性事件与 reducer 更新的唯一世界状态。"),
         ("03 / 角色认知", "可能不完整或错误；每条记忆都保留事件来源。"),
     ]
-    for column, (title, copy) in zip([col_a, col_b, col_c], layers):
+    for column, (title, copy) in zip(
+        [col_a, col_b, col_c], layers, strict=True
+    ):
         with column:
             st.markdown(
                 f'<div class="layer"><div class="layer-title">{title}</div>'
@@ -424,17 +426,17 @@ st.markdown(
 terminal = state.status in {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.BLOCKED}
 control_1, control_2, control_3, spacer = st.columns([1, 1, 1.15, 3])
 with control_1:
-    if st.button("推进一轮", type="primary", disabled=terminal, use_container_width=True):
+    if st.button("推进一轮", type="primary", disabled=terminal, width="stretch"):
         with st.spinner("构建四个隔离观察包并裁决…"):
             engine.step(selected_run)
         st.rerun()
 with control_2:
-    if st.button("推进三轮", disabled=terminal, use_container_width=True):
+    if st.button("推进三轮", disabled=terminal, width="stretch"):
         with st.spinner("逐轮提交保存点…"):
             engine.run(selected_run, rounds=3)
         st.rerun()
 with control_3:
-    if st.button("运行至结局", disabled=terminal, use_container_width=True):
+    if st.button("运行至结局", disabled=terminal, width="stretch"):
         with st.spinner("运行至成功、失败或审计阻断…"):
             engine.run(selected_run)
         st.rerun()
@@ -451,7 +453,9 @@ with tabs[0]:
         ("已确认事件", str(metrics["events"]), f"{metrics['actions']} 个行动"),
         ("状态摘要", state.state_digest()[:8], "确定性快照"),
     ]
-    for column, (metric_label, value, note) in zip(metric_cols, metric_data):
+    for column, (metric_label, value, note) in zip(
+        metric_cols, metric_data, strict=True
+    ):
         with column:
             st.markdown(
                 f"""
@@ -481,7 +485,9 @@ with tabs[0]:
                 "ask": "询问",
                 "wait": "观察",
             }
-            for column, action in zip(action_cols, record.actions):
+            for column, action in zip(
+                action_cols, record.actions, strict=True
+            ):
                 profile = bundle.character_map[action.actor_id]
                 caused = next(
                     (
@@ -511,7 +517,9 @@ with tabs[0]:
         st.write("")
         st.subheader("人员位置")
         location_cols = st.columns(len(bundle.scenario.locations))
-        for column, location in zip(location_cols, bundle.scenario.locations):
+        for column, location in zip(
+            location_cols, bundle.scenario.locations, strict=True
+        ):
             occupants = [
                 bundle.character_map[character_id]
                 for character_id, location_id in state.locations.items()
@@ -701,7 +709,7 @@ with tabs[1]:
                 else:
                     row[character.display_name] = "未知 —"
             rows.append(row)
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        st.dataframe(rows, width="stretch", hide_index=True)
         st.caption(
             f"{perspective_label} · ◆ 私密：仅拥有者观察包可读取；"
             "✓ 共享：已经过事件显式传播。"
@@ -818,7 +826,7 @@ with tabs[3]:
             {"指标": "章节事件覆盖率", "结果": f"{metrics['narrative_event_coverage']:.0%}"},
             {"指标": "确定性摘要", "结果": metrics["final_state_digest"]},
         ]
-        st.dataframe(metric_rows, use_container_width=True, hide_index=True)
+        st.dataframe(metric_rows, width="stretch", hide_index=True)
 
 with tabs[4]:
     st.subheader("三层信息，不让模型混在一起")
@@ -840,7 +848,9 @@ with tabs[4]:
             "角色只接收权限过滤后的观察和本人记忆；信念始终保留证据来源。",
         ),
     ]
-    for column, (title, meta, copy) in zip(layer_cols, layer_content):
+    for column, (title, meta, copy) in zip(
+        layer_cols, layer_content, strict=True
+    ):
         with column:
             st.markdown(
                 f"""
@@ -863,7 +873,7 @@ with tabs[4]:
         ("05", "确定性更新"),
         ("06", "连续性审计"),
     ]
-    for column, (number, name) in zip(flow_cols, stages):
+    for column, (number, name) in zip(flow_cols, stages, strict=True):
         with column:
             st.markdown(
                 f'<div class="metric-card" style="min-height:6rem">'

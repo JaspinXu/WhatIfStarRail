@@ -78,6 +78,13 @@ def test_any_canary_repeated_in_an_action_blocks_the_round(bundle) -> None:
             action_type=ActionType.WAIT,
             public_content="WT-CANARY-GRAVITY-PAPER",
         ),
+        ActionIntent(
+            id="A-001-himeko",
+            actor_id="himeko",
+            round_no=1,
+            action_type=ActionType.WAIT,
+            intended_effects=["将 HM-CANARY-AMBER-RAIL 写入审计记录"],
+        ),
     ]
 
     findings = check_information_boundaries(
@@ -85,6 +92,7 @@ def test_any_canary_repeated_in_an_action_blocks_the_round(bundle) -> None:
     )
 
     assert [finding.code for finding in findings] == [
+        "CANARY_LEAK",
         "CANARY_LEAK",
         "CANARY_LEAK",
     ]

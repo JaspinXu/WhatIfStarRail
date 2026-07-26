@@ -47,7 +47,12 @@ All four observations are built before any action is applied. This prevents char
 - The state digest excludes operational `run_id` and the chain hash.
 - Each event extends a `timeline_hash`.
 - Every committed round stores the complete typed `RoundRecord` and a `WorldState` snapshot.
-- Replay starts from round 0 and applies the same events through the same reducer.
+- Replay rebuilds a blank initial state from the scenario and seed, reads every
+  canonical event (including round-0 briefings) from the event table, and applies
+  them through the same reducer.
+- Acceptance requires the final state digest, timeline hash and the duplicate
+  event copies inside round records to agree; changing only one persisted source
+  therefore fails replay.
 
 LLM runs are auditable but are not claimed to be byte-for-byte reproducible. Once generated, their confirmed event log still replays deterministically.
 
@@ -99,5 +104,4 @@ The default ZIP contains:
 - `metrics.csv`
 - `README.txt`
 
-The sanitized export removes private event payloads, private action content, rationales, memories, beliefs and researcher-only relationship state. Full trace export is an explicit opt-in and still excludes environment variables and API credentials.
-
+The sanitized export removes private event payloads, private action content, rationales, memories, beliefs and researcher-only relationship state. If any action trips a canary, all model-authored fields in that action are redacted from the sanitized export while its audit skeleton remains. Full trace export is an explicit opt-in and still excludes environment variables and API credentials.

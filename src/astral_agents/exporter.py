@@ -55,13 +55,14 @@ def build_export_payload(
                 else {
                     "round_no": record.round_no,
                     "actions": [
-                        {
-                            **action.model_dump(
-                                mode="json",
-                                exclude={"private_content", "rationale"},
+                        _sanitized_action(
+                            action,
+                            canary_leak=any(
+                                finding.code == "CANARY_LEAK"
+                                and finding.actor_id == action.actor_id
+                                for finding in record.findings
                             ),
-                            "private_content": None,
-                        }
+                        )
                         for action in record.actions
                     ],
                     "event_ids": [event.id for event in record.events],
@@ -90,6 +91,33 @@ def build_export_payload(
             for belief in repository.get_beliefs(run_id)
         ]
     return payload
+
+
+def _sanitized_action(action: Any, *, canary_leak: bool) -> dict[str, Any]:
+    if canary_leak:
+        # Preserve the audit skeleton without publishing any model-authored
+        # strings from an action that tripped the private-memory canary.
+        return {
+            "id": action.id,
+            "actor_id": action.actor_id,
+            "round_no": action.round_no,
+            "action_type": action.action_type.value,
+            "target_ids": [],
+            "location_id": None,
+            "public_content": None,
+            "private_content": None,
+            "intended_effects": [],
+            "evidence_event_ids": [],
+            "confidence": action.confidence,
+            "redacted_due_to": "CANARY_LEAK",
+        }
+    return {
+        **action.model_dump(
+            mode="json",
+            exclude={"private_content", "rationale"},
+        ),
+        "private_content": None,
+    }
 
 
 def build_demo_archive(
@@ -231,4 +259,3 @@ def _metrics_csv(metrics: dict[str, Any]) -> str:
     writer.writeheader()
     writer.writerow(metrics)
     return buffer.getvalue()
-

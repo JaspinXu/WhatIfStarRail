@@ -16,7 +16,7 @@ dependencies = [
   "typer>=0.16,<1",
   "click>=8.1,<8.4",
   "rich>=13.7,<15",
-  "streamlit>=1.39,<2",
+  "streamlit>=1.60,<2",
 ]
 
 [project.optional-dependencies]

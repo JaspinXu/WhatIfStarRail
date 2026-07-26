@@ -17,4 +17,5 @@ runs/*
 !runs/.gitkeep
 exports/*
 !exports/.gitkeep
-
+output/
+.playwright-cli/

@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -65,7 +65,7 @@ def run_command(
         typer.Option("--policy", help="heuristic、scripted 或 llm。"),
     ] = "heuristic",
     rounds: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--rounds", help="最多推进轮数；默认运行到终局。"),
     ] = None,
     model: Annotated[
@@ -133,7 +133,7 @@ def resume(
     scenario: ScenarioOption = DEFAULT_SCENARIO_DIR,
     database: DatabaseOption = Path("runs/astral.sqlite"),
     rounds: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--rounds", help="继续轮数；默认运行到终局。"),
     ] = None,
 ) -> None:
@@ -178,11 +178,11 @@ def replay(
 def inspect(
     run_id: str,
     character: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--character", "-c", help="仅查看该角色有权限读取的视角。"),
     ] = None,
     round_no: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--round", "-r", help="查看指定轮次；默认当前轮。"),
     ] = None,
     scenario: ScenarioOption = DEFAULT_SCENARIO_DIR,
@@ -253,7 +253,7 @@ def export_command(
     run_id: str,
     database: DatabaseOption = Path("runs/astral.sqlite"),
     output: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--output", "-o", help="输出 ZIP 路径。"),
     ] = None,
     include_private: Annotated[

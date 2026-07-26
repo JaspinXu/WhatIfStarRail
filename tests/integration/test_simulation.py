@@ -162,3 +162,41 @@ def test_replay_detects_event_table_tampering(bundle, repository) -> None:
     assert not replay.matched
     assert not replay.event_sources_consistent
     assert replay.expected_timeline_hash != replay.actual_timeline_hash
+
+
+def test_replay_detects_opening_event_tampering(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(
+        RunConfig(scenario_id=bundle.scenario.id, seed=42)
+    )
+    engine.run(run_id, rounds=1)
+    original = repository.get_events(run_id, end_round=0)[0]
+    tampered = original.model_copy(
+        update={"public_summary": f"{original.public_summary}（篡改）"}
+    )
+
+    with repository.transaction() as connection:
+        connection.execute(
+            """
+            UPDATE events
+            SET public_summary = ?, event_json = ?
+            WHERE run_id = ? AND event_id = ?
+            """,
+            (
+                tampered.public_summary,
+                json.dumps(
+                    tampered.model_dump(mode="json"),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                run_id,
+                tampered.id,
+            ),
+        )
+
+    replay = engine.replay(run_id)
+
+    assert not replay.matched
+    assert not replay.event_sources_consistent
+    assert replay.expected_timeline_hash != replay.actual_timeline_hash

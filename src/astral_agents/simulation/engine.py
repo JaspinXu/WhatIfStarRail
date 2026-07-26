@@ -5,7 +5,6 @@ import random
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
 from astral_agents.domain.models import (
     CanonicalEvent,
@@ -242,15 +241,41 @@ class SimulationEngine:
         return records
 
     def replay(self, run_id: str) -> ReplayResult:
+        manifest = self.repository.get_manifest(run_id)
         records = self.repository.get_rounds(run_id)
-        state = self.repository.get_state_at_round(run_id, 0)
-        canonical_events = self.repository.get_events(run_id, start_round=1)
-        for event in canonical_events:
+        canonical_events = self.repository.get_events(run_id)
+        canonical_opening_events = [
+            event for event in canonical_events if event.round_no == 0
+        ]
+        canonical_round_events = [
+            event for event in canonical_events if event.round_no > 0
+        ]
+        state = create_initial_state(
+            self.bundle, run_id, manifest.seed
+        )
+        for event in canonical_opening_events:
+            state, _ = apply_event(state, event, self.bundle)
+        state.status = RunStatus.READY
+        for event in canonical_round_events:
             state, _ = apply_event(state, event, self.bundle)
         record_events = [event for record in records for event in record.events]
-        event_sources_consistent = [
-            event.model_dump(mode="json") for event in canonical_events
-        ] == [event.model_dump(mode="json") for event in record_events]
+        event_sources_consistent = (
+            [
+                event.model_dump(mode="json")
+                for event in canonical_opening_events
+            ]
+            == [
+                event.model_dump(mode="json")
+                for event in self._opening_events()
+            ]
+            and [
+                event.model_dump(mode="json")
+                for event in canonical_round_events
+            ]
+            == [
+                event.model_dump(mode="json") for event in record_events
+            ]
+        )
         expected_state = self.repository.get_state(run_id)
         expected = expected_state.state_digest()
         actual = state.state_digest()
@@ -443,5 +468,5 @@ class SimulationEngine:
 
 
 def _derived_seed(seed: int, round_no: int, actor_id: str) -> int:
-    payload = f"{seed}:{round_no}:{actor_id}".encode("utf-8")
+    payload = f"{seed}:{round_no}:{actor_id}".encode()
     return int(hashlib.sha256(payload).hexdigest()[:16], 16)

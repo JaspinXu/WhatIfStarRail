@@ -24,7 +24,10 @@ The integration suite verifies the following baseline properties:
 | Leakage findings | 0 |
 | Evidence ID validity | 100% |
 | Narrative event coverage | 100% |
-| Replay digest | Exact match |
+| Replay state digest + timeline hash | Exact match |
+| Event table vs round-record event copies | Exact match |
+| Seeded private-memory canaries | Owner-only; all action fields scanned |
+| Canary-blocked sanitized export | Model-authored fields redacted |
 | Pause/resume vs continuous run | Exact match |
 
 Exact state digests are intentionally computed at runtime because they should change when an authorized schema, scenario or reducer revision changes. Regression tests compare equivalent runs created from the same revision rather than pinning a stale digest across intentional migrations.
@@ -50,4 +53,3 @@ The prototype demonstrates that:
 - Authorization required for any commercial or public fan product
 
 Those are follow-up research items, not hidden claims of the prototype.
-

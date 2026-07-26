@@ -38,15 +38,10 @@ def check_information_boundaries(
                     blocked=True,
                 )
             )
-        text = " ".join(
-            part
-            for part in [
-                action.public_content,
-                action.private_content,
-                action.rationale,
-            ]
-            if part
-        )
+        # Scan the complete structured action, not only prose fields. Model-authored
+        # strings such as intended_effects and target_ids must not become a side
+        # channel that bypasses the canary boundary.
+        text = action.model_dump_json()
         for canary, owner_id in canary_owners.items():
             if canary in text:
                 ownership = (

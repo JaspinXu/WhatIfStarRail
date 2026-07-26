@@ -1,13 +1,20 @@
 import io
+import json
 import zipfile
 from pathlib import Path
 
 from typer.testing import CliRunner
 
 from astral_agents.cli import app
-from astral_agents.domain.models import RunConfig
-from astral_agents.exporter import build_demo_archive
+from astral_agents.domain.models import (
+    ActionIntent,
+    ActionType,
+    RunConfig,
+    RunStatus,
+)
+from astral_agents.exporter import build_demo_archive, build_export_payload
 from astral_agents.simulation.engine import SimulationEngine
+from astral_agents.simulation.policies import DecisionOutcome
 
 runner = CliRunner()
 
@@ -57,6 +64,44 @@ def test_private_export_is_explicit_and_labeled(bundle, repository) -> None:
         assert "DH-CANARY-INK-ORBIT" in trace
         assert "HM-CANARY-AMBER-RAIL" in trace
         assert "WT-CANARY-GRAVITY-PAPER" in trace
+
+
+def test_sanitized_export_redacts_a_blocked_canary_action(
+    bundle, repository, monkeypatch
+) -> None:
+    class CanaryProvider:
+        def decide(self, profile, observation, memories, bundle, rng):
+            canary = profile.private_facts[0].canary
+            return DecisionOutcome(
+                ActionIntent(
+                    id=f"A-{observation.round_no:03d}-{profile.id}",
+                    actor_id=profile.id,
+                    round_no=observation.round_no,
+                    action_type=ActionType.WAIT,
+                    intended_effects=[f"记录 {canary}"],
+                )
+            )
+
+    monkeypatch.setattr(
+        "astral_agents.simulation.engine.provider_for",
+        lambda policy, model: CanaryProvider(),
+    )
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(
+        RunConfig(scenario_id=bundle.scenario.id, seed=6)
+    )
+
+    engine.step(run_id)
+    sanitized = build_export_payload(repository, run_id)
+    full = build_export_payload(repository, run_id, include_private=True)
+
+    assert repository.get_state(run_id).status == RunStatus.BLOCKED
+    assert "-CANARY-" not in json.dumps(sanitized, ensure_ascii=False)
+    assert all(
+        action["redacted_due_to"] == "CANARY_LEAK"
+        for action in sanitized["rounds"][0]["actions"]
+    )
+    assert "-CANARY-" in json.dumps(full, ensure_ascii=False)
 
 
 def test_cli_validate_and_one_round_run(tmp_path: Path) -> None:

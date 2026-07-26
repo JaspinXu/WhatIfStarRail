@@ -155,9 +155,11 @@ def validate_action(
                 "NON_ADJACENT_MOVE",
                 f"无法从 {origin} 直接移动到 {destination}。",
             )
-    if action.action_type == ActionType.INVESTIGATE:
-        if action.location_id != observation.current_location:
-            return _finding(action, "REMOTE_INVESTIGATION", "角色不能远程调查其他地点。")
+    if (
+        action.action_type == ActionType.INVESTIGATE
+        and action.location_id != observation.current_location
+    ):
+        return _finding(action, "REMOTE_INVESTIGATION", "角色不能远程调查其他地点。")
     if action.action_type == ActionType.REVEAL:
         if not action.target_ids:
             return _finding(action, "MISSING_CLUE", "分享行动没有指定线索。")
@@ -170,9 +172,11 @@ def validate_action(
                 severity=Severity.CRITICAL,
                 blocked=True,
             )
-    if action.action_type == ActionType.USE_RESOURCE:
-        if not action.target_ids or action.target_ids[0] not in bundle.scenario.resource_map:
-            return _finding(action, "UNKNOWN_RESOURCE", "资源操作没有合法目标。")
+    if action.action_type == ActionType.USE_RESOURCE and (
+        not action.target_ids
+        or action.target_ids[0] not in bundle.scenario.resource_map
+    ):
+        return _finding(action, "UNKNOWN_RESOURCE", "资源操作没有合法目标。")
     return None
 
 

@@ -232,7 +232,7 @@ def apply_event(
         separators=(",", ":"),
     )
     next_state.timeline_hash = hashlib.sha256(
-        f"{state.timeline_hash}|{event_payload}".encode("utf-8")
+        f"{state.timeline_hash}|{event_payload}".encode()
     ).hexdigest()[:16]
     return WorldState.model_validate(next_state.model_dump()), diffs
 
