@@ -21,22 +21,28 @@
 
 ## 快速开始
 
-需要 Python 3.11 或更高版本。
+本项目固定使用本机 Conda 环境 `pytorch_env`，不要为本项目创建或切换到其他虚拟环境。
+该环境当前使用 Python 3.11。
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+conda activate pytorch_env
+cd D:\astral-narrative-agents
+
+# 确认输出路径包含 \envs\pytorch_env\
+python -c "import sys; print(sys.executable)"
+
 python -m pip install -e ".[dev]"
 
-astral validate
-astral run --seed 42
-astral ui
+python -m astral_agents.cli validate
+python -m astral_agents.cli run --seed 42
+python -m astral_agents.cli ui
 ```
 
-macOS / Linux 将激活命令替换为：
+也可以在项目根目录直接运行固定环境启动脚本；即使当前 shell 没有激活环境，
+脚本也只会通过 `pytorch_env` 启动界面：
 
-```bash
-source .venv/bin/activate
+```powershell
+.\scripts\start.ps1
 ```
 
 界面启动后：
@@ -68,10 +74,11 @@ astral ui
 离线策略足以演示全部功能。若要让角色实时生成 `ActionIntent`：
 
 ```powershell
-python -m pip install -e ".[llm]"
+conda activate pytorch_env
+python -m pip install -e ".[dev,llm]"
 $env:OPENAI_API_KEY = "..."
 $env:ASTRAL_OPENAI_MODEL = "gpt-5.6-sol"
-astral run --policy llm --seed 42
+python -m astral_agents.cli run --policy llm --seed 42
 ```
 
 LLM 只能读取该角色的公开行为规则、目标、权限过滤观察和本人检索记忆；它只能提出结构化意图，不能直接生成状态 patch。解析失败、引用不可见事件或 API 不可用时会记录 trace 并回退到离线策略。密钥不会写入数据库或导出文件。

@@ -3,9 +3,14 @@
 ## 准备
 
 ```powershell
+conda activate pytorch_env
+cd D:\astral-narrative-agents
+python -c "import sys; print(sys.executable)"
 python -m pip install -e ".[dev]"
-astral ui
+python -m astral_agents.cli ui
 ```
+
+解释器输出路径必须包含 `\envs\pytorch_env\`。本项目不使用其他虚拟环境。
 
 浏览器打开后，左侧选择“离线启发式（推荐）”。这个模式不需要 API Key。
 

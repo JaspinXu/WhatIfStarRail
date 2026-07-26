@@ -11,7 +11,8 @@ venv/
 .env
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 runs/*
 !runs/.gitkeep
