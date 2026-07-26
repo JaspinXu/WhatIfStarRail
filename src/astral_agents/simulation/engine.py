@@ -46,6 +46,10 @@ class ReplayResult:
     matched: bool
 
 
+class IncompatibleRunError(ValueError):
+    """Raised when a stored run does not belong to the loaded scenario bundle."""
+
+
 class SimulationEngine:
     def __init__(
         self,
@@ -58,6 +62,16 @@ class SimulationEngine:
         self.narrative = TemplateNarrativeWriter()
 
     def create_run(self, config: RunConfig) -> str:
+        if config.scenario_id != self.bundle.scenario.id:
+            raise IncompatibleRunError(
+                f"run config scenario {config.scenario_id!r} does not match "
+                f"loaded scenario {self.bundle.scenario.id!r}"
+            )
+        if config.max_rounds and config.max_rounds > self.bundle.scenario.max_rounds:
+            raise ValueError(
+                f"max_rounds cannot exceed scenario limit "
+                f"{self.bundle.scenario.max_rounds}"
+            )
         suffix = uuid.uuid4().hex[:8]
         run_id = f"{self.bundle.scenario.id}-{config.seed}-{suffix}"
         state = create_initial_state(self.bundle, run_id, config.seed)
@@ -80,6 +94,7 @@ class SimulationEngine:
             policy=config.policy,
             model=config.model,
             memory_strategy=config.memory_strategy,
+            max_rounds=config.max_rounds,
         )
         self.repository.create_run(
             manifest, state, opening_events, memories, beliefs
@@ -89,6 +104,7 @@ class SimulationEngine:
     def step(self, run_id: str) -> RoundRecord:
         started = time.perf_counter()
         manifest = self.repository.get_manifest(run_id)
+        self._assert_run_compatibility(manifest)
         state_before = self.repository.get_state(run_id)
         if state_before.status in {
             RunStatus.SUCCEEDED,
@@ -99,14 +115,14 @@ class SimulationEngine:
                 f"run {run_id} is terminal ({state_before.status.value})"
             )
         round_no = state_before.round_no + 1
-        max_rounds = self.bundle.scenario.max_rounds
+        max_rounds = manifest.max_rounds or self.bundle.scenario.max_rounds
         if round_no > max_rounds:
             raise RuntimeError(f"run {run_id} already reached max rounds")
 
-        all_events = self.repository.get_events(run_id)
+        recent_events = self.repository.get_recent_events(run_id)
         observations = {
             character.id: build_observation(
-                character.id, state_before, all_events, self.bundle
+                character.id, state_before, recent_events, self.bundle
             )
             for character in self.bundle.characters
         }
@@ -157,7 +173,12 @@ class SimulationEngine:
                     state_after, event, self.bundle
                 )
                 diffs.extend(event_diffs)
-            resolution_event = self._resolution_event(state_after, round_no, len(events) + 1)
+            resolution_event = self._resolution_event(
+                state_after,
+                round_no,
+                len(events) + 1,
+                max_rounds,
+            )
             if resolution_event:
                 state_after, event_diffs = apply_event(
                     state_after, resolution_event, self.bundle
@@ -227,8 +248,14 @@ class SimulationEngine:
         return record
 
     def run(self, run_id: str, rounds: int | None = None) -> list[RoundRecord]:
+        if rounds is not None and rounds < 0:
+            raise ValueError("rounds must be non-negative")
+        manifest = self.repository.get_manifest(run_id)
+        self._assert_run_compatibility(manifest)
+        state = self.repository.get_state(run_id)
+        max_rounds = manifest.max_rounds or self.bundle.scenario.max_rounds
         records: list[RoundRecord] = []
-        remaining = rounds or self.bundle.scenario.max_rounds
+        remaining = max_rounds - state.round_no if rounds is None else rounds
         for _ in range(remaining):
             state = self.repository.get_state(run_id)
             if state.status in {
@@ -242,6 +269,7 @@ class SimulationEngine:
 
     def replay(self, run_id: str) -> ReplayResult:
         manifest = self.repository.get_manifest(run_id)
+        self._assert_run_compatibility(manifest)
         records = self.repository.get_rounds(run_id)
         canonical_events = self.repository.get_events(run_id)
         canonical_opening_events = [
@@ -315,6 +343,7 @@ class SimulationEngine:
         state: WorldState,
         round_no: int,
         event_index: int,
+        max_rounds: int,
     ) -> CanonicalEvent | None:
         rules = self.bundle.scenario.resolution
         failure_value = state.resources[rules.failure_resource]
@@ -349,7 +378,7 @@ class SimulationEngine:
         )
         success_ready = (
             round_no >= rules.earliest_success_round
-            and state.resources["evidence"] >= rules.evidence_required
+            and state.resources[rules.evidence_resource] >= rules.evidence_required
             and resources_ready
             and not state.open_threads
         )
@@ -389,7 +418,7 @@ class SimulationEngine:
                 tags=["public", "resolution", "success"],
             )
 
-        if round_no >= self.bundle.scenario.max_rounds:
+        if round_no >= max_rounds:
             return CanonicalEvent(
                 id=f"R{round_no:03d}-E{event_index:02d}-resolution",
                 round_no=round_no,
@@ -434,6 +463,28 @@ class SimulationEngine:
                 tags=["public", "phase"],
             )
         return None
+
+    def _assert_run_compatibility(self, manifest: RunManifest) -> None:
+        expected = self.bundle.scenario
+        mismatches: list[str] = []
+        if manifest.scenario_id != expected.id:
+            mismatches.append(
+                f"scenario id {manifest.scenario_id!r} != {expected.id!r}"
+            )
+        if manifest.scenario_version != expected.version:
+            mismatches.append(
+                f"scenario version {manifest.scenario_version!r} != {expected.version!r}"
+            )
+        if manifest.config_digest != self.bundle.config_digest:
+            mismatches.append(
+                f"config digest {manifest.config_digest!r} != "
+                f"{self.bundle.config_digest!r}"
+            )
+        if mismatches:
+            raise IncompatibleRunError(
+                f"run {manifest.run_id} is incompatible with the loaded scenario: "
+                + "; ".join(mismatches)
+            )
 
     def _maybe_episode(
         self,

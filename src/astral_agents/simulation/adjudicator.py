@@ -39,6 +39,7 @@ def adjudicate_actions(
     events: list[CanonicalEvent] = []
     event_index = 1
     resource_claims: defaultdict[str, list[str]] = defaultdict(list)
+    pending_resource_deltas: defaultdict[str, float] = defaultdict(float)
     reserved_clues: set[str] = set()
 
     for action in sorted(actions, key=lambda item: item.actor_id):
@@ -83,9 +84,13 @@ def adjudicate_actions(
             round_no,
             event_index,
             resource_claims,
+            pending_resource_deltas,
             reserved_clues,
         )
         events.append(generated)
+        for change in generated.changes:
+            if change.kind == "adjust_resource":
+                pending_resource_deltas[change.subject_id] += float(change.value or 0)
         if generated.event_type == "clue_discovered":
             reserved_clues.update(
                 tag for tag in generated.tags if tag in bundle.scenario.clue_map
@@ -93,11 +98,11 @@ def adjudicate_actions(
         event_index += 1
 
     decay_changes = []
-    decay_amounts = {"power": -2.2, "life_support": -1.4, "phase_stability": -0.8}
-    for resource_id, amount in decay_amounts.items():
+    for resource_id, amount in bundle.scenario.resource_decay.items():
         current = state.resources.get(resource_id)
         if current is None:
             continue
+        current += pending_resource_deltas[resource_id]
         minimum = state.resource_limits[resource_id][0]
         safe_amount = max(amount, minimum - current)
         if safe_amount:
@@ -187,6 +192,7 @@ def _event_for_action(
     round_no: int,
     event_index: int,
     resource_claims: dict[str, list[str]],
+    pending_resource_deltas: dict[str, float],
     reserved_clues: set[str],
 ) -> CanonicalEvent:
     profile = bundle.character_map[action.actor_id]
@@ -254,6 +260,16 @@ def _event_for_action(
                 tags=["investigation", state.locations[action.actor_id]],
             )
         clue = candidates[0]
+        evidence_resource = bundle.scenario.resolution.evidence_resource
+        evidence_current = (
+            state.resources[evidence_resource]
+            + pending_resource_deltas.get(evidence_resource, 0)
+        )
+        evidence_maximum = state.resource_limits[evidence_resource][1]
+        evidence_amount = min(
+            clue.evidence_points,
+            max(0.0, evidence_maximum - evidence_current),
+        )
         changes = [
             StateChange(
                 kind="discover_clue",
@@ -263,8 +279,8 @@ def _event_for_action(
             ),
             StateChange(
                 kind="adjust_resource",
-                subject_id="evidence",
-                value=clue.evidence_points,
+                subject_id=evidence_resource,
+                value=evidence_amount,
             ),
         ]
         if clue.sets_flag:
@@ -314,7 +330,7 @@ def _event_for_action(
     if action.action_type == ActionType.USE_RESOURCE:
         resource_id = action.target_ids[0]
         definition = bundle.scenario.resource_map[resource_id]
-        current = state.resources[resource_id]
+        current = state.resources[resource_id] + pending_resource_deltas.get(resource_id, 0)
         amount = min(10.0, definition.maximum - current)
         claimants = sorted(resource_claims.get(resource_id, []))
         if len(claimants) > 1 and action.actor_id != claimants[0]:

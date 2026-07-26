@@ -160,6 +160,7 @@ class ClueDefinition(FrozenAstralModel):
 
 class ResolutionRules(FrozenAstralModel):
     evidence_required: float = Field(gt=0)
+    evidence_resource: str = "evidence"
     repaired_resources: list[str]
     minimum_resource_ratio: float = Field(default=0.4, ge=0, le=1)
     earliest_success_round: int = Field(default=8, ge=1)
@@ -180,6 +181,13 @@ class ScenarioConfig(FrozenAstralModel):
     locations: list[LocationDefinition]
     adjacency: dict[str, list[str]]
     resources: list[ResourceDefinition]
+    resource_decay: dict[str, float] = Field(
+        default_factory=lambda: {
+            "power": -2.2,
+            "life_support": -1.4,
+            "phase_stability": -0.8,
+        }
+    )
     active_conflicts: list[str]
     open_threads: list[str]
     clues: list[ClueDefinition]
@@ -444,7 +452,7 @@ class RunConfig(FrozenAstralModel):
     seed: int
     policy: Literal["heuristic", "scripted", "llm"] = "heuristic"
     model: str = "gpt-5.6-sol"
-    max_rounds: int | None = None
+    max_rounds: int | None = Field(default=None, ge=1)
     memory_strategy: Literal["event_retrieval", "recent_only", "none"] = "event_retrieval"
 
 
@@ -458,4 +466,5 @@ class RunManifest(AstralModel):
     policy: str
     model: str
     memory_strategy: str
+    max_rounds: int | None = None
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

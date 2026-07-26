@@ -7,7 +7,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from astral_agents.evaluation.metrics import evaluate_run
+from astral_agents.evaluation.metrics import evaluate_trace
 from astral_agents.storage.repository import SQLiteRepository
 
 DISCLAIMER = (
@@ -79,7 +79,14 @@ def build_export_payload(
         ],
         "episodes": [episode.model_dump(mode="json") for episode in episodes],
         "findings": [finding.model_dump(mode="json") for finding in findings],
-        "metrics": evaluate_run(repository, run_id),
+        "metrics": evaluate_trace(
+            run_id,
+            state,
+            rounds,
+            events,
+            episodes,
+            findings,
+        ),
     }
     if include_private:
         payload["memories"] = [

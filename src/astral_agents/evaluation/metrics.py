@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from astral_agents.domain.models import (
+    CanonicalEvent,
+    NarrativeEpisode,
+    RoundRecord,
+    ValidationFinding,
+    WorldState,
+)
 from astral_agents.storage.repository import SQLiteRepository
 
 
@@ -10,6 +17,19 @@ def evaluate_run(repository: SQLiteRepository, run_id: str) -> dict[str, Any]:
     events = repository.get_events(run_id)
     episodes = repository.get_episodes(run_id)
     findings = repository.get_findings(run_id)
+    state = repository.get_state(run_id)
+    return evaluate_trace(run_id, state, rounds, events, episodes, findings)
+
+
+def evaluate_trace(
+    run_id: str,
+    state: WorldState,
+    rounds: list[RoundRecord],
+    events: list[CanonicalEvent],
+    episodes: list[NarrativeEpisode],
+    findings: list[ValidationFinding],
+) -> dict[str, Any]:
+    """Evaluate an already-loaded trace without repeating repository queries."""
     actions = [action for record in rounds for action in record.actions]
     model_calls = [trace for record in rounds for trace in record.model_calls]
     durations = sorted(record.duration_ms for record in rounds)
@@ -58,8 +78,8 @@ def evaluate_run(repository: SQLiteRepository, run_id: str) -> dict[str, Any]:
         )
         if narrative_candidates
         else 1.0,
-        "final_state_digest": repository.get_state(run_id).state_digest(),
-        "timeline_hash": repository.get_state(run_id).timeline_hash,
+        "final_state_digest": state.state_digest(),
+        "timeline_hash": state.timeline_hash,
     }
 
 

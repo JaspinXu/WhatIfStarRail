@@ -25,6 +25,10 @@ class RunNotFoundError(KeyError):
     """Raised when a run id does not exist in the selected database."""
 
 
+class ConcurrentRunUpdateError(RuntimeError):
+    """Raised when a round was computed from a state that is no longer current."""
+
+
 class SQLiteRepository:
     def __init__(self, path: str | Path = "runs/astral.sqlite") -> None:
         self.path = Path(path).resolve()
@@ -258,6 +262,22 @@ class SQLiteRepository:
         episode: NarrativeEpisode | None,
     ) -> None:
         with self.transaction() as connection:
+            current = connection.execute(
+                "SELECT current_round, state_json FROM runs WHERE run_id = ?",
+                (record.run_id,),
+            ).fetchone()
+            if current is None:
+                raise RunNotFoundError(record.run_id)
+            expected_round = record.round_no - 1
+            state_before_json = self._dump(record.state_before)
+            if (
+                current["current_round"] != expected_round
+                or current["state_json"] != state_before_json
+            ):
+                raise ConcurrentRunUpdateError(
+                    f"run {record.run_id} changed while round {record.round_no} "
+                    "was being computed"
+                )
             connection.execute(
                 """
                 INSERT INTO rounds(run_id, round_no, record_json, state_digest, duration_ms)
@@ -503,6 +523,23 @@ class SQLiteRepository:
         return [
             CanonicalEvent.model_validate_json(row["event_json"])
             for row in self._all(sql, tuple(params))
+        ]
+
+    def get_recent_events(self, run_id: str, limit: int = 16) -> list[CanonicalEvent]:
+        if limit < 1:
+            return []
+        rows = self._all(
+            """
+            SELECT event_json FROM events
+            WHERE run_id = ?
+            ORDER BY round_no DESC, event_id DESC
+            LIMIT ?
+            """,
+            (run_id, limit),
+        )
+        return [
+            CanonicalEvent.model_validate_json(row["event_json"])
+            for row in reversed(rows)
         ]
 
     def get_rounds(self, run_id: str) -> list[RoundRecord]:

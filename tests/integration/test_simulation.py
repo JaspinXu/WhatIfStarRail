@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from astral_agents.domain.models import RunConfig, RunStatus
 from astral_agents.evaluation.metrics import evaluate_run
-from astral_agents.simulation.engine import SimulationEngine
-from astral_agents.storage.repository import SQLiteRepository
+from astral_agents.simulation.engine import IncompatibleRunError, SimulationEngine
+from astral_agents.storage.repository import ConcurrentRunUpdateError, SQLiteRepository
 
 
 def _create_engine(bundle, path: Path) -> SimulationEngine:
@@ -200,3 +202,63 @@ def test_replay_detects_opening_event_tampering(bundle, repository) -> None:
     assert not replay.matched
     assert not replay.event_sources_consistent
     assert replay.expected_timeline_hash != replay.actual_timeline_hash
+
+
+def test_run_zero_rounds_is_a_noop(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(RunConfig(scenario_id=bundle.scenario.id, seed=4))
+
+    assert engine.run(run_id, rounds=0) == []
+    assert repository.get_state(run_id).round_no == 0
+
+
+def test_run_respects_configured_round_limit(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(
+        RunConfig(scenario_id=bundle.scenario.id, seed=4, max_rounds=2)
+    )
+
+    records = engine.run(run_id)
+
+    assert len(records) == 2
+    assert repository.get_state(run_id).status == RunStatus.FAILED
+
+
+def test_create_run_rejects_a_different_scenario_id(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+
+    with pytest.raises(IncompatibleRunError, match="does not match"):
+        engine.create_run(RunConfig(scenario_id="another_scenario", seed=4))
+
+
+def test_existing_run_rejects_scenario_config_drift(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(RunConfig(scenario_id=bundle.scenario.id, seed=4))
+    changed_bundle = bundle.model_copy(update={"config_digest": "changed"})
+
+    with pytest.raises(IncompatibleRunError, match="config digest"):
+        SimulationEngine(changed_bundle, repository).step(run_id)
+
+
+def test_stale_round_commit_is_rejected_atomically(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(RunConfig(scenario_id=bundle.scenario.id, seed=4))
+    record = engine.step(run_id)
+
+    with pytest.raises(ConcurrentRunUpdateError, match="changed while"):
+        repository.commit_round(record, [], [], None)
+
+    assert len(repository.get_rounds(run_id)) == 1
+
+
+def test_recent_events_are_ordered_and_bounded(bundle, repository) -> None:
+    engine = SimulationEngine(bundle, repository)
+    run_id = engine.create_run(RunConfig(scenario_id=bundle.scenario.id, seed=4))
+    engine.run(run_id, rounds=2)
+
+    recent = repository.get_recent_events(run_id, limit=3)
+
+    assert len(recent) == 3
+    assert [(event.round_no, event.id) for event in recent] == sorted(
+        (event.round_no, event.id) for event in recent
+    )

@@ -5,7 +5,7 @@ from astral_agents.simulation.checks import (
     check_information_boundaries,
 )
 from astral_agents.simulation.observation import build_observation
-from astral_agents.simulation.reducer import create_initial_state
+from astral_agents.simulation.reducer import apply_event, create_initial_state
 
 
 def test_observations_do_not_contain_other_characters_private_facts(bundle) -> None:
@@ -126,3 +126,30 @@ def test_simultaneous_investigations_reserve_a_clue_once(bundle) -> None:
     assert sum(
         event.event_type == "investigation_completed" for event in result.events
     ) == 1
+
+
+def test_simultaneous_repairs_do_not_overfill_a_resource(bundle) -> None:
+    state = create_initial_state(bundle, "test-run", 42)
+    state.resources["power"] = 95
+    actor_ids = ["himeko", "welt"]
+    observations = {
+        actor_id: build_observation(actor_id, state, [], bundle)
+        for actor_id in actor_ids
+    }
+    actions = [
+        ActionIntent(
+            id=f"A-001-{actor_id}",
+            actor_id=actor_id,
+            round_no=1,
+            action_type=ActionType.USE_RESOURCE,
+            target_ids=["power"],
+        )
+        for actor_id in actor_ids
+    ]
+
+    result = adjudicate_actions(actions, observations, state, bundle, 1)
+    final_state = state
+    for event in result.events:
+        final_state, _ = apply_event(final_state, event, bundle)
+
+    assert final_state.resources["power"] <= final_state.resource_limits["power"][1]
