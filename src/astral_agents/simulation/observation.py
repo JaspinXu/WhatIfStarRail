@@ -72,6 +72,7 @@ def build_observation(
     return ObservationPacket(
         character_id=character_id,
         round_no=state.round_no + 1,
+        story_background=state.story_background or bundle.scenario.premise,
         phase=state.phase,
         current_location=current_location,
         visible_characters=visible_characters,

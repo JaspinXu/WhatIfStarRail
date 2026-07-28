@@ -18,7 +18,12 @@ class InvalidStateChange(ValueError):
     """Raised when an event attempts an illegal world-state transition."""
 
 
-def create_initial_state(bundle: ScenarioBundle, run_id: str, seed: int) -> WorldState:
+def create_initial_state(
+    bundle: ScenarioBundle,
+    run_id: str,
+    seed: int,
+    story_background: str = "",
+) -> WorldState:
     character_ids = [character.id for character in bundle.characters]
     relationships: dict[str, dict[str, RelationshipState]] = {}
     for source in character_ids:
@@ -37,6 +42,7 @@ def create_initial_state(bundle: ScenarioBundle, run_id: str, seed: int) -> Worl
         run_id=run_id,
         scenario_id=bundle.scenario.id,
         seed=seed,
+        story_background=story_background,
         phase=bundle.scenario.start_phase,
         status=RunStatus.READY,
         locations={

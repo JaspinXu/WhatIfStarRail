@@ -65,6 +65,9 @@ class HeuristicDecisionProvider:
         ]
         if discoverable_here:
             clue = sorted(discoverable_here, key=lambda item: item.id)[0]
+            location_name = bundle.scenario.location_map[
+                observation.current_location
+            ].display_name
             return DecisionOutcome(
                 ActionIntent(
                     id=action_id,
@@ -76,6 +79,11 @@ class HeuristicDecisionProvider:
                     intended_effects=["核验现场证据"],
                     evidence_event_ids=evidence_ids[:2],
                     confidence=0.82,
+                    public_content=_voice(
+                        profile,
+                        f"{_background_lead(observation)}我先检查{location_name}，"
+                        "确认过的部分再告诉大家。",
+                    ),
                     rationale=f"当前位置可能推进目标：{profile.goals[0].description}",
                 )
             )
@@ -128,6 +136,7 @@ class HeuristicDecisionProvider:
 
         destination = _next_destination(profile, observation, bundle)
         if destination and destination != observation.current_location:
+            destination_name = bundle.scenario.location_map[destination].display_name
             return DecisionOutcome(
                 ActionIntent(
                     id=action_id,
@@ -139,6 +148,11 @@ class HeuristicDecisionProvider:
                     intended_effects=["前往下一调查区域"],
                     evidence_event_ids=evidence_ids[:1],
                     confidence=0.74,
+                    public_content=_voice(
+                        profile,
+                        f"{_background_lead(observation)}这里暂时没有新证据，"
+                        f"我去{destination_name}继续确认。",
+                    ),
                     rationale="当前区域没有新的可验证线索，转向下一优先地点。",
                 )
             )
@@ -185,7 +199,7 @@ class DecisionDraft(BaseModel):
     action_type: ActionType
     target_ids: list[str] = Field(default_factory=list)
     location_id: str | None = None
-    public_content: str | None = None
+    public_content: str = Field(min_length=1, max_length=500)
     private_content: str | None = None
     intended_effects: list[str] = Field(default_factory=list)
     evidence_event_ids: list[str] = Field(default_factory=list)
@@ -369,3 +383,11 @@ def _voice(profile: CharacterProfile, content: str) -> str:
     if profile.id == "welt":
         return f"{content} 先把风险边界留清楚。"
     return content
+
+
+def _background_lead(observation: ObservationPacket) -> str:
+    if observation.round_no != 1 or not observation.story_background.strip():
+        return ""
+    compact = " ".join(observation.story_background.split())
+    anchor = compact[:32] + ("…" if len(compact) > 32 else "")
+    return f"按“{anchor}”这个前提，"

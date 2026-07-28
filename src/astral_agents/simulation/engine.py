@@ -74,7 +74,15 @@ class SimulationEngine:
             )
         suffix = uuid.uuid4().hex[:8]
         run_id = f"{self.bundle.scenario.id}-{config.seed}-{suffix}"
-        state = create_initial_state(self.bundle, run_id, config.seed)
+        story_background = (
+            config.story_background or self.bundle.scenario.premise
+        ).strip()
+        state = create_initial_state(
+            self.bundle,
+            run_id,
+            config.seed,
+            story_background,
+        )
         opening_events = self._opening_events()
         for event in opening_events:
             state, _ = apply_event(state, event, self.bundle)
@@ -95,6 +103,7 @@ class SimulationEngine:
             model=config.model,
             memory_strategy=config.memory_strategy,
             max_rounds=config.max_rounds,
+            story_background=story_background,
         )
         self.repository.create_run(
             manifest, state, opening_events, memories, beliefs
@@ -279,7 +288,10 @@ class SimulationEngine:
             event for event in canonical_events if event.round_no > 0
         ]
         state = create_initial_state(
-            self.bundle, run_id, manifest.seed
+            self.bundle,
+            run_id,
+            manifest.seed,
+            manifest.story_background,
         )
         for event in canonical_opening_events:
             state, _ = apply_event(state, event, self.bundle)

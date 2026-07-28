@@ -50,7 +50,11 @@ def adjudicate_actions(
             rejected.action_type = ActionType.WAIT
             rejected.target_ids = []
             rejected.location_id = None
-            rejected.public_content = None
+            rejected.public_content = _default_dialogue(
+                rejected,
+                bundle,
+                prefix="这条路走不通，",
+            )
             rejected.private_content = None
             rejected.intended_effects = ["非法行动已安全回退为等待"]
             rejected.rationale = f"裁决器回退：{issue.message}"
@@ -70,9 +74,12 @@ def adjudicate_actions(
             )
             event_index += 1
             continue
-        normalized.append(action)
-        if action.action_type == ActionType.USE_RESOURCE and action.target_ids:
-            resource_claims[action.target_ids[0]].append(action.actor_id)
+        accepted = action.model_copy(deep=True)
+        if not accepted.public_content:
+            accepted.public_content = _default_dialogue(accepted, bundle)
+        normalized.append(accepted)
+        if accepted.action_type == ActionType.USE_RESOURCE and accepted.target_ids:
+            resource_claims[accepted.target_ids[0]].append(accepted.actor_id)
 
     for action in normalized:
         if any(action.id in event.caused_by_action_ids for event in events):
@@ -418,6 +425,41 @@ def _finding(
         actor_id=action.actor_id,
         blocked=blocked,
     )
+
+
+def _default_dialogue(
+    action: ActionIntent,
+    bundle: ScenarioBundle,
+    *,
+    prefix: str = "",
+) -> str:
+    if action.action_type == ActionType.MOVE:
+        destination = action.location_id or (
+            action.target_ids[0] if action.target_ids else None
+        )
+        place = (
+            bundle.scenario.location_map[destination].display_name
+            if destination in bundle.scenario.location_map
+            else "下一个区域"
+        )
+        content = f"我去{place}看看，有结果会立刻同步。"
+    elif action.action_type == ActionType.INVESTIGATE:
+        content = "我先核验现场，未经确认的部分暂时不下结论。"
+    elif action.action_type == ActionType.USE_RESOURCE:
+        resource_id = action.target_ids[0] if action.target_ids else None
+        resource = (
+            bundle.scenario.resource_map[resource_id].display_name
+            if resource_id in bundle.scenario.resource_map
+            else "当前系统"
+        )
+        content = f"我来处理{resource}，你们继续盯住证据链。"
+    elif action.action_type == ActionType.REVEAL:
+        content = "我有一项可以公开验证的线索，现在同步给大家。"
+    elif action.action_type == ActionType.WAIT:
+        content = "信息还不够，我先观察，不贸然推进。"
+    else:
+        content = "把你看到的情况说清楚，我们当场核对。"
+    return f"{prefix}{content}"
 
 
 def _event_id(round_no: int, index: int, kind: str, actor: str) -> str:

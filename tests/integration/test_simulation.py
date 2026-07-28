@@ -6,6 +6,7 @@ import pytest
 from astral_agents.domain.models import RunConfig, RunStatus
 from astral_agents.evaluation.metrics import evaluate_run
 from astral_agents.simulation.engine import IncompatibleRunError, SimulationEngine
+from astral_agents.simulation.observation import build_observation
 from astral_agents.storage.repository import ConcurrentRunUpdateError, SQLiteRepository
 
 
@@ -36,6 +37,44 @@ def test_complete_offline_demo_succeeds_and_replays(bundle, repository) -> None:
     assert metrics["leakage_findings"] == 0
     assert metrics["evidence_validity_rate"] == 1.0
     assert metrics["narrative_event_coverage"] == 1.0
+    assert all(
+        action.public_content
+        for record in records
+        for action in record.actions
+    )
+
+
+def test_custom_story_background_reaches_every_character_and_replays(
+    bundle, repository
+) -> None:
+    engine = SimulationEngine(bundle, repository)
+    story_background = (
+        "星穹列车误入一座会重写访客记忆的海上城市，"
+        "众人必须在黎明前确认谁仍记得真实航线。"
+    )
+    run_id = engine.create_run(
+        RunConfig(
+            scenario_id=bundle.scenario.id,
+            seed=23,
+            policy="heuristic",
+            story_background=story_background,
+        )
+    )
+
+    state = repository.get_state(run_id)
+    opening_events = repository.get_events(run_id, end_round=0)
+    observations = [
+        build_observation(character.id, state, opening_events, bundle)
+        for character in bundle.characters
+    ]
+    record = engine.step(run_id)
+    replay = engine.replay(run_id)
+
+    assert state.story_background == story_background
+    assert repository.get_manifest(run_id).story_background == story_background
+    assert {item.story_background for item in observations} == {story_background}
+    assert all(action.public_content for action in record.actions)
+    assert replay.matched
 
 
 def test_same_seed_produces_same_structural_state(bundle, tmp_path: Path) -> None:

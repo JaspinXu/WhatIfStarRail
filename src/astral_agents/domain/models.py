@@ -249,6 +249,7 @@ class WorldState(AstralModel):
     run_id: str
     scenario_id: str
     seed: int
+    story_background: str = ""
     round_no: int = Field(default=0, ge=0)
     phase: str
     status: RunStatus = RunStatus.READY
@@ -294,6 +295,7 @@ class WorldState(AstralModel):
 class ObservationPacket(FrozenAstralModel):
     character_id: str
     round_no: int
+    story_background: str
     phase: str
     current_location: str
     visible_characters: list[str]
@@ -454,6 +456,7 @@ class RunConfig(FrozenAstralModel):
     model: str = "gpt-5.6-sol"
     max_rounds: int | None = Field(default=None, ge=1)
     memory_strategy: Literal["event_retrieval", "recent_only", "none"] = "event_retrieval"
+    story_background: str | None = Field(default=None, max_length=8000)
 
 
 class RunManifest(AstralModel):
@@ -467,4 +470,5 @@ class RunManifest(AstralModel):
     model: str
     memory_strategy: str
     max_rounds: int | None = None
+    story_background: str = ""
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
