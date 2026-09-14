@@ -6,6 +6,17 @@ The bundled “Silent Route” scenario places four configured characters in an 
 
 > Runs fully offline by default. OpenAI-powered live decisions are optional.
 
+## Star Rail companion / 星铁伴游
+
+New: a local companion workspace for live subtitle OCR, conversations with characters at a selected story moment, immutable alternative branches, and open-ended continuation from any custom starting point.
+
+```bash
+python -m pip install -e ".[dev,capture,llm]"
+python -m astral_agents.cli ui
+```
+
+Open `http://localhost:8501/?mode=companion`. Configure the subtitle rectangle and enable capture explicitly. Branches and character chats persist locally. Offline generation is a labeled workflow demo; contextual generation requires `OPENAI_API_KEY`, `ASTRAL_OPENAI_MODEL`, and the model toggle. Story changes live in the companion, not the game client. See [中文使用指南与限制](docs/companion.zh-CN.md).
+
 ## Highlights
 
 - Four independently configured characters and one complete 10–12 round scenario.

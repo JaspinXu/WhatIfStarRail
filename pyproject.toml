@@ -20,6 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+capture = ["mss>=9,<11", "rapidocr-onnxruntime>=1.3,<2", "numpy>=1.24,<3"]
 llm = ["openai>=1.109,<3"]
 dev = [
   "pytest>=7.4,<9",

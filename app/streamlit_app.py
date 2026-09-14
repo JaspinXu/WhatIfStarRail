@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
+if str(ROOT / "app") not in sys.path:
+    sys.path.insert(0, str(ROOT / "app"))
 
 from astral_agents.config import load_scenario  # noqa: E402
 from astral_agents.domain.models import RunConfig, RunStatus  # noqa: E402
@@ -393,6 +395,16 @@ div[data-testid="stTabs"] button[aria-selected="true"] {
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
+
+workspace = st.sidebar.radio("工作台", ["多人物模拟", "星铁伴游"],
+                             index=1 if st.query_params.get("mode") == "companion" else 0)
+if workspace == "星铁伴游":
+    from companion_ui import render
+
+    if "pending_story" in st.session_state:
+        st.session_state.story_selected = st.session_state.pop("pending_story")
+    render(Path(os.getenv("ASTRAL_COMPANION_DATABASE", ROOT / "runs" / "companion.sqlite")))
+    st.stop()
 
 DB_PATH = Path(os.getenv("ASTRAL_DATABASE", ROOT / "runs" / "astral.sqlite"))
 ASSET_DIR = ROOT / "app" / "assets"
