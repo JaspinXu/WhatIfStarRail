@@ -49,6 +49,8 @@ def test_model_receives_only_selected_branch_and_actor(tmp_path, monkeypatch):
     import sys
     from types import SimpleNamespace
 
+    from astral_agents.companion_models import CharacterCard
+
     calls = []
 
     class Client:
@@ -75,6 +77,42 @@ def test_model_receives_only_selected_branch_and_actor(tmp_path, monkeypatch):
     store.chat(sibling, "丹恒", "旁支问题", "旁支答案")
     store.chat(selected, "三月七", "其他人物问题", "其他人物答案")
     store.chat(selected, "丹恒", "此处问题", "此处答案")
+    store.chat(root, "丹恒", "之前的问题", "记得之前")
+    store.save_card(CharacterCard(name="丹恒", voice="简洁克制"))
+    store.save_card(CharacterCard(name="三月七", voice="其他人的语气"))
     assert generate(store, selected, "心境？", actor="丹恒", live=True) == "我们先核实情况。"
     assert [n["content"] for n in calls[0]["branch"]] == ["共同前提", "眼前的事件"]
-    assert [c["answer"] for c in calls[0]["history"]] == ["此处答案"]
+    assert [c["answer"] for c in calls[0]["history"]] == ["记得之前", "此处答案"]
+    assert [c["name"] for c in calls[0]["character_cards"]] == ["丹恒"]
+
+
+def test_chat_completions_protocol_and_saved_model(tmp_path, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    calls = []
+
+    class Client:
+        def __init__(self, **kwargs):
+            self.chat = SimpleNamespace(completions=self)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="继续前行。"))])
+
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=Client))
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    monkeypatch.setenv("ASTRAL_OPENAI_MODEL", "environment-model")
+    store = StoryStore(tmp_path / "chat.sqlite")
+    store.save_setting("protocol", "chat")
+    store.save_setting("model", "saved-model")
+    root = store.add("起点", "等待", "丹恒")
+    assert generate(store, root, "继续", live=True) == "继续前行。"
+    assert calls[0]["model"] == "saved-model"
+    assert calls[0]["messages"][0]["role"] == "system"

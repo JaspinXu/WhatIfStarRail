@@ -397,7 +397,7 @@ div[data-testid="stTabs"] button[aria-selected="true"] {
 st.markdown(CSS, unsafe_allow_html=True)
 
 workspace = st.sidebar.radio("工作台", ["多人物模拟", "星铁伴游"],
-                             index=1 if st.query_params.get("mode") == "companion" else 0)
+                             index=0 if st.query_params.get("mode") == "simulation" else 1)
 if workspace == "星铁伴游":
     from companion_ui import render
 

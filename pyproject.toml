@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "WhatIfStarRail"
-version = "0.1.0"
+version = "0.2.0"
 description = "WhatIfStarRail / 星铁如果说: a story companion for Honkai: Star Rail / 崩坏：星穹铁道."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,9 +20,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+bridge = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 capture = ["mss>=9,<11", "rapidocr-onnxruntime>=1.3,<2", "numpy>=1.24,<3"]
 llm = ["openai>=1.109,<3"]
 dev = [
+  "fastapi>=0.115,<1",
+  "httpx>=0.27,<1",
   "pytest>=7.4,<9",
   "ruff>=0.3,<1",
 ]

@@ -9,7 +9,9 @@ def test_streamlit_quick_demo_loads_without_exceptions(
     monkeypatch.setenv("ASTRAL_DATABASE", str(tmp_path / "ui.sqlite"))
     app_path = Path(__file__).resolve().parents[2] / "app" / "streamlit_app.py"
 
-    app = AppTest.from_file(str(app_path), default_timeout=45).run()
+    app = AppTest.from_file(str(app_path), default_timeout=45)
+    app.query_params["mode"] = "simulation"
+    app.run()
     assert not app.exception
     assert len(app.button) == 2
 
@@ -27,7 +29,9 @@ def test_streamlit_step_mode_handles_round_zero_and_advances(
     monkeypatch.setenv("ASTRAL_DATABASE", str(tmp_path / "step-ui.sqlite"))
     app_path = Path(__file__).resolve().parents[2] / "app" / "streamlit_app.py"
 
-    app = AppTest.from_file(str(app_path), default_timeout=45).run()
+    app = AppTest.from_file(str(app_path), default_timeout=45)
+    app.query_params["mode"] = "simulation"
+    app.run()
     app.button[1].click().run(timeout=45)
 
     assert not app.exception

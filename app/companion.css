@@ -1,0 +1,43 @@
+/* Original WhatIfStarRail workbench; interaction patterns credited in docs. */
+.stApp {background:radial-gradient(ellipse at 85% 0%,#202540 0,transparent 48%),#0c1020!important}
+.stApp:before {opacity:.09!important}
+.block-container {max-width:1540px;padding-top:3.8rem!important}
+[data-testid=stSidebar] {background:#101526!important;border-right:1px solid #29314b!important}
+.link-brand {font-size:1.12rem;font-weight:750;color:#fff;letter-spacing:.02em;margin-bottom:4px}
+.link-sub {color:#8f9bb6;font-size:.78rem;line-height:1.7;margin-bottom:22px}
+.workbench-hero {position:relative;isolation:isolate;overflow:hidden;border:1px solid #3b4560;
+ border-radius:18px;min-height:215px;padding:32px 36px;background:#172039;margin-bottom:20px}
+.workbench-hero:before {content:'';position:absolute;z-index:-1;inset:0;
+ background:linear-gradient(90deg,#121a30 0%,#141c30ee 40%,#141c3030 80%),var(--hero-art);
+ background-size:cover;background-position:center 42%}
+.workbench-hero .kicker {color:#d3b882;font-size:.72rem;letter-spacing:.18em;font-weight:700}
+.workbench-hero h1 {font-size:2.5rem!important;line-height:1.3;margin:10px 0!important;padding:0!important}
+.workbench-hero p {max-width:62%;font-size:.91rem;line-height:1.8;color:#c7d0e5!important;margin:0}
+.hero-chip {display:inline-block;margin-top:16px;border:1px solid #65718b;border-radius:20px;
+ padding:4px 10px;color:#d5e0f5;font-size:.7rem;background:#0e162b88}
+.section-kicker {font-size:.7rem;letter-spacing:.13em;color:#d3b882;margin:4px 0 8px}
+.status-card {border:1px solid #303950;background:#141c30;border-radius:12px;padding:17px 20px;margin-bottom:14px;min-height:102px}
+.status-card .label {color:#92a2bf;font-size:.76rem;margin-bottom:8px}
+.status-card .value {font-size:1.35rem;color:#eef3ff;font-weight:650}
+.status-card .hint {font-size:.7rem;color:#8b9bb8;margin-top:4px}
+.scene-paper {border:1px solid #35415b;border-left:3px solid #d5ba84;border-radius:10px;padding:22px 24px;background:#151d31;margin:12px 0}
+.scene-paper h3 {font-size:1.1rem!important;margin:0 0 12px;padding:0!important}
+.scene-paper .prose {white-space:pre-wrap;color:#d7dfef;line-height:1.9;font-size:.94rem}
+.tag {display:inline-block;border:1px solid #3c4962;background:#222d43;color:#c7d7ed;border-radius:5px;padding:3px 8px;font-size:.69rem;margin:6px 5px 0 0}
+.timeline-item {padding:12px 16px;border-left:2px solid #536784;margin-left:5px;background:#151d2d;margin-bottom:8px;border-radius:0 8px 8px 0}
+.timeline-item .time {font-size:.68rem;color:#96a9c5;margin-bottom:5px}
+.timeline-item .line {font-size:.84rem;color:#d5dfef;line-height:1.6;white-space:pre-wrap}
+.persona {border:1px solid #3b4560;background:linear-gradient(160deg,#253149,#171e30);border-radius:12px;padding:18px;min-height:190px}
+.persona img {float:right;height:130px;width:90px;object-fit:cover;object-position:top;border-radius:9px;margin-left:12px}
+.persona h3 {font-size:1rem!important;padding:0!important}
+.persona p {color:#aebdd4!important;font-size:.8rem;line-height:1.75}
+.empty-panel {padding:35px;border:1px dashed #43516c;border-radius:12px;background:#141c2d;text-align:center;color:#adbad0;line-height:1.9;margin:12px 0}
+div[data-testid=stTabs] [role=tablist] {background:#11192b!important;border:1px solid #303c56!important;border-radius:10px!important;padding:5px!important;gap:5px!important}
+div[data-testid=stTabs] button[role=tab] {border-radius:7px!important;height:44px!important;padding:8px 18px!important}
+div[data-testid=stTabs] button[aria-selected=true] {background:#d5bc8d!important;color:#141d2e!important;box-shadow:none!important}
+div[data-testid=stTabs] button[aria-selected=true] p {color:#141d2e!important}
+div[data-testid=stForm] {border-color:#303c54!important;background:#131b2b!important;border-radius:12px!important}
+[data-testid=stMetric] {background:#141c30!important}
+button[kind=primary] {background:#d5bc8d!important;color:#151d2d!important;border-color:#d5bc8d!important}
+button[kind=primary] p {color:#151d2d!important}
+@media(max-width:800px){.workbench-hero{padding:24px;min-height:180px}.workbench-hero h1{font-size:2rem!important}.workbench-hero p{max-width:100%}.workbench-hero:before{opacity:.45}.persona{min-height:180px}}

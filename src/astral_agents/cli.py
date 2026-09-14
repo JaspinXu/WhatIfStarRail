@@ -287,6 +287,19 @@ def metrics(
 
 
 @app.command()
+def bridge(
+    database: DatabaseOption = Path("runs/companion.sqlite"),
+    port: Annotated[int, typer.Option(min=1024, max=65535)] = 8502,
+) -> None:
+    """启动有令牌认证的本地剧情接入 API。"""
+    import uvicorn
+
+    from astral_agents.bridge_api import create_app
+
+    uvicorn.run(create_app(database), host="127.0.0.1", port=port)
+
+
+@app.command()
 def ui(
     database: DatabaseOption = Path("runs/astral.sqlite"),
 ) -> None:
