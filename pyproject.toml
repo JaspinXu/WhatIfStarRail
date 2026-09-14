@@ -3,13 +3,13 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "astral-narrative-agents"
+name = "WhatIfStarRail"
 version = "0.1.0"
-description = "An event-sourced, multi-agent narrative simulation research prototype."
+description = "WhatIfStarRail / 星铁如果说: a story companion for Honkai: Star Rail / 崩坏：星穹铁道."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Astral Narrative Agents contributors" }]
+authors = [{ name = "WhatIfStarRail contributors" }]
 dependencies = [
   "pydantic>=2.8,<3",
   "PyYAML>=6.0,<7",
@@ -28,7 +28,13 @@ dev = [
 ]
 
 [project.scripts]
+whatifstarrail = "astral_agents.cli:app"
 astral = "astral_agents.cli:app"
+
+[project.urls]
+Repository = "https://github.com/JaspinXu/WhatIfStarRail"
+Documentation = "https://github.com/JaspinXu/WhatIfStarRail/blob/main/docs/companion.zh-CN.md"
+Issues = "https://github.com/JaspinXu/WhatIfStarRail/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

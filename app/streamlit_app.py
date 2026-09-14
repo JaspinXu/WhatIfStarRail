@@ -24,7 +24,7 @@ from astral_agents.simulation.observation import build_observation  # noqa: E402
 from astral_agents.storage.repository import SQLiteRepository  # noqa: E402
 
 st.set_page_config(
-    page_title="Astral Narrative Agents",
+    page_title="WhatIfStarRail · 星铁如果说",
     page_icon="✦",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -677,7 +677,7 @@ if not selected_run:
         f"""
         <div class="mission-stage ai-stage" style="background-image:url('{ai_hero}')">
           <div class="mission-copy">
-            <div class="mission-code">Astral narrative protocol / 01</div>
+            <div class="mission-code">WhatIfStarRail / 星铁如果说 / 01</div>
             <div class="mission-title">每个人只看见<br><em>自己的星轨</em></div>
             <div class="mission-sub">{html.escape(st.session_state.get("story_background", bundle.scenario.premise))}</div>
             <div class="status-row">

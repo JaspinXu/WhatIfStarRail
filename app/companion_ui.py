@@ -15,10 +15,11 @@ def render(database: Path):
     st.markdown("<style>.block-container{padding-top:3.5rem}"
                 "button[role=tab][aria-selected=true] p{color:#071725!important}"
                 "</style>", unsafe_allow_html=True)
-    st.markdown('<div class="hero"><div class="eyebrow">ASTRAL LINK / 星铁伴游</div>'
-                '<div class="hero-title">在故事发生时，走进故事。</div>'
-                '<div class="hero-sub">捕捉这一刻 · 与角色跨越第四面墙 · '
-                '让一个不同的选择，生长成新的世界</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero"><div class="eyebrow">WhatIfStarRail / 星铁如果说</div>'
+                '<div class="hero-title">星铁如果说</div>'
+                '<div class="hero-sub">如果你能在那一刻开口，故事会不会不一样？'
+                '<br>Honkai: Star Rail / 崩坏：星穹铁道 · 剧情捕捉 · 跨屏对话 · 分支改写'
+                '</div></div>', unsafe_allow_html=True)
     st.caption("非官方本地伴游插件 · 改写保存在独立故事分支 · 角色内心为同人推演")
     live = st.sidebar.toggle("使用模型生成", value=False)
     st.sidebar.caption("离线模式可体验全部流程。模型模式会发送所选分支的文本与对话，截图留在本机。")
@@ -115,7 +116,7 @@ def render(database: Path):
                 except Exception:
                     st.error("生成失败，未写入后续。请检查模型名称、凭据、网络或切换离线模式。")
             st.download_button("导出当前分支与对话", store.export(selected),
-                               file_name=f"astral-branch-{selected[:8]}.json", mime="application/json")
+                               file_name=f"WhatIfStarRail-branch-{selected[:8]}.json", mime="application/json")
     with chat_tab:
         st.subheader("此时此地，听见 TA 的回答")
         if not nodes:

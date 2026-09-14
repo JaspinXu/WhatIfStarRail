@@ -1,4 +1,4 @@
-"""Astral Narrative Agents research prototype."""
+"""WhatIfStarRail · 星铁如果说 (legacy astral_agents import namespace)."""
 
 from astral_agents.domain.models import ENGINE_VERSION
 

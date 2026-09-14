@@ -188,7 +188,7 @@ def build_demo_archive(
             "README.txt",
             "\n".join(
                 [
-                    "Astral Narrative Agents 演示导出",
+                    "WhatIfStarRail · 星铁如果说 演示导出",
                     "",
                     DISCLAIMER,
                     "",

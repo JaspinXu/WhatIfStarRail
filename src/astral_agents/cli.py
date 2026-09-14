@@ -21,8 +21,8 @@ from astral_agents.simulation.observation import build_observation
 from astral_agents.storage.repository import SQLiteRepository
 
 app = typer.Typer(
-    name="astral",
-    help="事件溯源的多智能体叙事模拟原型。",
+    name="whatifstarrail",
+    help="WhatIfStarRail · 星铁如果说：星铁伴游与多人物叙事工作台。",
     no_args_is_help=True,
 )
 console = Console()
@@ -50,7 +50,7 @@ def validate(
             f"角色：{len(bundle.characters)}｜地点：{len(bundle.scenario.locations)}｜"
             f"线索：{len(bundle.scenario.clues)}\n"
             f"摘要：{bundle.config_digest}",
-            title="Astral validation",
+            title="WhatIfStarRail validation",
         )
     )
 
@@ -107,8 +107,8 @@ def run_command(
             title="运行完成",
         )
     )
-    console.print(f"继续：astral resume {run_id}")
-    console.print(f"回放：astral replay {run_id}")
+    console.print(f"继续：whatifstarrail resume {run_id}")
+    console.print(f"回放：whatifstarrail replay {run_id}")
 
 
 @app.command()

@@ -1,4 +1,4 @@
-# Astral Narrative Agents：技术路线与实现路径
+# WhatIfStarRail · 星铁如果说：技术路线与实现路径
 
 > 项目性质：非官方、非商业的研究与同人原型  
 > 研究主题：基于《崩坏：星穹铁道》公开角色设定的多智能体叙事模拟  
@@ -464,7 +464,7 @@ SQLite MVP 表：
 ## 11. 仓库结构
 
 ```text
-astral-narrative-agents/
+WhatIfStarRail/
 ├─ README.md
 ├─ pyproject.toml
 ├─ .env.example

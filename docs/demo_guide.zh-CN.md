@@ -1,16 +1,16 @@
-# 两分钟原型演示指南
+# WhatIfStarRail · 两分钟多人物模拟演示
 
 ## 准备
 
 ```powershell
-conda activate pytorch_env
-cd D:\astral-narrative-agents
+git clone https://github.com/JaspinXu/WhatIfStarRail.git
+cd WhatIfStarRail
 python -c "import sys; print(sys.executable)"
 python -m pip install -e ".[dev]"
 python -m astral_agents.cli ui
 ```
 
-解释器输出路径必须包含 `\envs\pytorch_env\`。本项目不使用其他虚拟环境。
+使用 Python 3.11 虚拟环境即可。星铁伴游功能见 [星铁如果说使用指南](companion.zh-CN.md)。
 
 浏览器打开后，左侧选择“离线启发式（推荐）”。这个模式不需要 API Key。
 
