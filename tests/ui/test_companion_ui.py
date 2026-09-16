@@ -41,3 +41,29 @@ def test_default_workbench_and_public_character_cards(tmp_path, monkeypatch):
     assert len(StoryStore(database).nodes()) == 1
     app.text_input(key="library_query").set_value("不存在的剧情").run()
     assert any("找到 0 个节点" in c.value for c in app.caption)
+
+
+def test_prompt_chip_navigation_and_leaf_delete(tmp_path, monkeypatch):
+    from astral_agents.companion import StoryStore
+
+    database = tmp_path / "nav.sqlite"
+    monkeypatch.setenv("ASTRAL_COMPANION_DATABASE", str(database))
+    store = StoryStore(database)
+    root = store.add("起点", "三月七在车门前等待。", "三月七")
+    leaf = store.add("如果", "三月七决定留下。", "三月七", "fork", root)
+    path = Path(__file__).resolve().parents[2] / "app" / "streamlit_app.py"
+    app = AppTest.from_file(str(path), default_timeout=30).run()
+    assert app.selectbox(key="story_selected").value == leaf
+    next(b for b in app.button if b.key == "prompt_你现在最担心什么？").click().run()
+    assert not app.exception
+    assert store.chats(leaf, "三月七")[0]["question"] == "你现在最担心什么？"
+    next(b for b in app.button if b.key == "nav_parent").click().run()
+    assert app.selectbox(key="story_selected").value == root
+    assert any(b.key == "child_" + leaf for b in app.button)
+    next(b for b in app.button if b.key == "child_" + leaf).click().run()
+    app.checkbox(key="confirm_delete_" + leaf).check().run()
+    next(b for b in app.button if b.key == "delete_" + leaf).click().run()
+    assert not app.exception
+    assert [n["id"] for n in store.nodes()] == [root]
+    assert store.chats(leaf, "三月七") == []
+    assert app.selectbox(key="story_selected").value == root

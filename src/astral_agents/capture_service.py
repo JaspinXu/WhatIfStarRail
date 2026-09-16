@@ -35,10 +35,16 @@ class CaptureService:
                 timeline = uuid4().hex
                 self.store.save_setting("capture_timeline", timeline)
             self._stop.clear()
-            self._status.update(state="starting", error="", timeline=timeline)
+            self._status.update(state="starting", error="", timeline=timeline,
+                                frames=0, saved=0, latency_ms=0)
             self._thread = threading.Thread(target=self._run, args=(profile, timeline),
                                             name="whatif-capture", daemon=True)
             self._thread.start()
+
+    @property
+    def running(self):
+        with self._lock:
+            return bool(self._thread and self._thread.is_alive())
 
     def stop(self):
         with self._lock:

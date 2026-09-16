@@ -116,3 +116,37 @@ def test_chat_completions_protocol_and_saved_model(tmp_path, monkeypatch):
     assert generate(store, root, "继续", live=True) == "继续前行。"
     assert calls[0]["model"] == "saved-model"
     assert calls[0]["messages"][0]["role"] == "system"
+
+
+def test_lineage_children_stats_and_leaf_delete(tmp_path):
+    store = StoryStore(tmp_path / "graph.sqlite")
+    root = store.add("起点", "车门即将关闭", "三月七, 丹恒，三月七")
+    fork = store.add("留下", "三月七留下", "三月七", "fork", root)
+    tail = store.add("续演", "后续", "三月七", "continuation", fork)
+    store.chat(tail, "三月七", "问", "答")
+    assert store.node(root)["cast"] == "三月七，丹恒"
+    assert [n["id"] for n in store.lineage(tail)] == [root, fork, tail]
+    assert [n["id"] for n in store.children(root)] == [fork]
+    assert store.stats() == {"nodes": 3, "forks": 1, "chats": 1, "cards": 0}
+    with pytest.raises(KeyError):
+        store.lineage("missing")
+    with pytest.raises(ValueError):
+        store.delete_leaf(fork)
+    store.delete_leaf(tail)
+    assert store.stats()["chats"] == 0
+    assert [n["id"] for n in store.nodes()] == [root, fork]
+    with pytest.raises(KeyError):
+        store.delete_leaf(tail)
+
+
+def test_split_cast_and_branch_history_limit(tmp_path):
+    from astral_agents.companion import split_cast
+
+    assert split_cast(" 丹恒，三月七,丹恒 ,, ") == ["丹恒", "三月七"]
+    store = StoryStore(tmp_path / "history.sqlite")
+    root = store.add("起点", "等待", "丹恒")
+    child = store.add("后续", "出发", "丹恒", "continuation", root)
+    for i in range(6):
+        store.chat(child if i % 2 else root, "丹恒", f"q{i}", f"a{i}")
+    answers = [c["answer"] for c in store.branch_history([root, child], "丹恒", limit=4)]
+    assert answers == ["a4", "a1", "a3", "a5"]
